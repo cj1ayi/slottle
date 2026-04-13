@@ -1,4 +1,6 @@
-import { Course } from "@/types";
+import type { StateCreator } from "zustand"
+import type { Course } from "@/types"
+import type { GlobalStore } from "./types"
 
 export type CourseSlice = {
   courses: Course[]
@@ -8,16 +10,15 @@ export type CourseSlice = {
   clearCourses: () => void
 }
 
-
-export const createCourseSlice = (set: any): CourseSlice => ({
+export const createCourseSlice: StateCreator<GlobalStore, [], [], CourseSlice> = (set) => ({
   courses: [],
   addCourse: (course) =>
-    set((state: any) => ({ courses: [...state.courses, course] })),
+    set((state) => ({ courses: [...state.courses, course] })),
   removeCourse: (id) =>
-    set((state: any) => ({ courses: state.courses.filter((c: Course) => c.id !== id) })),
+    set((state) => ({ courses: state.courses.filter((c) => c.id !== id) })),
   updateCourse: (id, updated) =>
-    set((state: any) => ({
-      courses: state.courses.map((c: Course) => c.id === id ? { ...c, ...updated } : c),
+    set((state) => ({
+      courses: state.courses.map((c) => c.id === id ? { ...c, ...updated } : c),
     })),
   clearCourses: () => set({ courses: [] }),
 })
