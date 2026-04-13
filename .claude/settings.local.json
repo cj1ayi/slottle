@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(mkdir -p \"d:/Everything in Drive F/Documents/Coding Documents/slottle/src/app/api/courses\")",
-      "Bash(mkdir -p \"d:/Everything in Drive F/Documents/Coding Documents/slottle/src/app/api/sections/[courseId]\")",
-      "Bash(bun run:*)"
-    ]
-  }
-}
