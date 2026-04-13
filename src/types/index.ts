@@ -1,9 +1,11 @@
 export type Day = "M" | "T" | "W" | "Th" | "F" | "S"
 
-export type TimeBlock = {
+export type Meeting = {
   day: Day
   start: number // 24hr format 0900 for 9:00 am
   end: number // 24hr format 1500 for 3:00 pm
+  room: string
+  modality: "F2F" | "Online" | "Hybrid"
 }
 
 export type Section = {
@@ -11,10 +13,10 @@ export type Section = {
   code: string // CCAPDEV
   section: string // S22
   professor: string
-  room: string
-  modality: "F2F" | "Online" | "Hybrid"
-  timeBlocks: TimeBlock[] 
+  meetings: Meeting[]
   locked: boolean
+  capacity: number
+  enlisted: number
 }
 
 export type Course = {
