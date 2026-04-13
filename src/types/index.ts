@@ -1,5 +1,10 @@
 export type Day = "M" | "T" | "W" | "Th" | "F" | "S"
 
+export type ApiCourse = {
+  COURSE_CREATION_ID: number
+  COURSE_NAME: string
+}
+
 export type Meeting = {
   day: Day
   start: number // 24hr format 0900 for 9:00 am
@@ -33,11 +38,19 @@ export type Schedule = {
   sections: Section[] 
 }
 
+export type SavedCourse = {
+  id: string
+  code: string
+  name: string
+  color: string
+  units: number
+}
+
 export type UserSchedule = {
   id: string
   name: string
-  schedules: Schedule[]
-  activeIndex: number
+  schedule: Schedule
+  courses: SavedCourse[]
   createdAt: number
 }
 

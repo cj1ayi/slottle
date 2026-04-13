@@ -2,15 +2,17 @@ import type { StateCreator } from "zustand"
 import type { GlobalStore } from "./types"
 
 export type UISlice = {
-  studentId: string
+  cookie: string
   zoomLevel: number
-  setStudentId: (id: string) => void
+  setCookie: (cookie: string) => void
+  clearCookie: () => void
   setZoomLevel: (level: number) => void
 }
 
 export const createUISlice: StateCreator<GlobalStore, [], [], UISlice> = (set) => ({
-  studentId: "",
+  cookie: "",
   zoomLevel: 1,
-  setStudentId: (id) => set({ studentId: id }),
+  setCookie: (cookie) => set({ cookie }),
+  clearCookie: () => set({ cookie: "" }),
   setZoomLevel: (level) => set({ zoomLevel: level }),
 })

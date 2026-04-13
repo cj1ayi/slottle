@@ -52,6 +52,11 @@ export const userScheduleSchema = z.object({
   createdAt: z.number(),
 })
 
+export const apiCourseSchema = z.object({
+  COURSE_CREATION_ID: z.number(),
+  COURSE_NAME: z.string(),
+})
+
 export const apiSectionSchema = z.object({
   COURSE_CREATION_ID: z.number(),
   SECTION_CREATION_ID: z.number(),
@@ -62,7 +67,8 @@ export const apiSectionSchema = z.object({
   SCHEDULE: z.string(),
   SESSION: z.string(),
   CAPACITY: z.number(),
-  ENLISTED: z.number(),
+  ENLISTED: z.number().default(0),
 })
 
+export type ApiCourse = z.infer<typeof apiCourseSchema>
 export type ApiSection = z.infer<typeof apiSectionSchema>
