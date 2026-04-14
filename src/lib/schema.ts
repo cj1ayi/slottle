@@ -1,23 +1,20 @@
-import { z } from "zod"
+import { z } from "zod";
 
-export const daySchema = z.enum([
-  "M","T","W",
-  "Th","F","S",
-])
+export const daySchema = z.enum(["M", "T", "W", "Th", "F", "S"]);
 
-export const modalitySchema = z.enum([
-  "F2F", "Online", "Hybrid"
-])
+export const modalitySchema = z.enum(["F2F", "Online", "Hybrid"]);
 
-export const meetingSchema  = z.object({
-  day: daySchema,
-  start: z.number().min(600).max(2200),
-  end: z.number().min(600).max(2200),
-  room: z.string(),
-  modality: modalitySchema,
-}).refine((tb) => tb.start < tb.end, {
-  message: "Start time must be before end time",
-})
+export const meetingSchema = z
+  .object({
+    day: daySchema,
+    start: z.number().min(600).max(2200),
+    end: z.number().min(600).max(2200),
+    room: z.string(),
+    modality: modalitySchema,
+  })
+  .refine((tb) => tb.start < tb.end, {
+    message: "Start time must be before end time",
+  });
 
 export const sectionSchema = z.object({
   id: z.string(),
@@ -28,7 +25,7 @@ export const sectionSchema = z.object({
   locked: z.boolean(),
   capacity: z.number(),
   enlisted: z.number(),
-})
+});
 
 export const courseSchema = z.object({
   id: z.string(),
@@ -37,12 +34,12 @@ export const courseSchema = z.object({
   units: z.number(),
   sections: z.array(sectionSchema),
   color: z.string(),
-})
+});
 
 export const scheduleSchema = z.object({
   id: z.string(),
   sections: z.array(sectionSchema),
-})
+});
 
 export const userScheduleSchema = z.object({
   id: z.string(),
@@ -50,12 +47,12 @@ export const userScheduleSchema = z.object({
   schedules: z.array(scheduleSchema),
   activeIndex: z.number().min(0),
   createdAt: z.number(),
-})
+});
 
 export const apiCourseSchema = z.object({
   COURSE_CREATION_ID: z.number(),
   COURSE_NAME: z.string(),
-})
+});
 
 export const apiSectionSchema = z.object({
   COURSE_CREATION_ID: z.number(),
@@ -68,7 +65,7 @@ export const apiSectionSchema = z.object({
   SESSION: z.string(),
   CAPACITY: z.number(),
   ENLISTED: z.number().default(0),
-})
+});
 
-export type ApiCourse = z.infer<typeof apiCourseSchema>
-export type ApiSection = z.infer<typeof apiSectionSchema>
+export type ApiCourse = z.infer<typeof apiCourseSchema>;
+export type ApiSection = z.infer<typeof apiSectionSchema>;

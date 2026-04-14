@@ -1,15 +1,20 @@
-import type { StateCreator } from "zustand"
-import type { UserSchedule } from "@/types"
-import type { GlobalStore } from "./types"
+import type { StateCreator } from "zustand";
+import type { UserSchedule } from "@/types";
+import type { GlobalStore } from "./types";
 
 export type ScheduleSlice = {
-  saved: UserSchedule[]
-  saveSchedule: (userSchedule: UserSchedule) => void
-  renameSaved: (id: string, name: string) => void
-  removeSaved: (id: string) => void
-}
+  saved: UserSchedule[];
+  saveSchedule: (userSchedule: UserSchedule) => void;
+  renameSaved: (id: string, name: string) => void;
+  removeSaved: (id: string) => void;
+};
 
-export const createScheduleSlice: StateCreator<GlobalStore, [], [], ScheduleSlice> = (set) => ({
+export const createScheduleSlice: StateCreator<
+  GlobalStore,
+  [],
+  [],
+  ScheduleSlice
+> = (set) => ({
   saved: [],
   saveSchedule: (userSchedule) =>
     set((state) => ({ saved: [...state.saved, userSchedule] })),
@@ -19,4 +24,4 @@ export const createScheduleSlice: StateCreator<GlobalStore, [], [], ScheduleSlic
     })),
   removeSaved: (id) =>
     set((state) => ({ saved: state.saved.filter((s) => s.id !== id) })),
-})
+});
