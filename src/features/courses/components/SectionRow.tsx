@@ -1,19 +1,19 @@
-"use client"
+"use client";
 
-import { Check } from "lucide-react"
-import { meetingSummary } from "@/lib/utils"
-import type { Section } from "@/types"
+import { Check } from "lucide-react";
+import { meetingSummary } from "@/lib/utils";
+import type { Section } from "@/types";
 
 type Props = {
-  section: Section
-  included: boolean
-  onToggle: () => void
-  color: string
-}
+  section: Section;
+  included: boolean;
+  onToggle: () => void;
+  color: string;
+};
 
 export function SectionRow({ section, included, onToggle, color }: Props) {
-  const slots = section.capacity - section.enlisted
-  const full = slots <= 0
+  const slots = section.capacity - section.enlisted;
+  const full = slots <= 0;
 
   return (
     <button
@@ -36,15 +36,21 @@ export function SectionRow({ section, included, onToggle, color }: Props) {
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="text-sm font-medium">{section.section}</span>
-          <span className="text-xs text-muted-foreground truncate">{section.professor || "TBA"}</span>
+          <span className="text-xs text-muted-foreground truncate">
+            {section.professor || "TBA"}
+          </span>
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5">{meetingSummary(section.meetings)}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {meetingSummary(section.meetings)}
+        </p>
       </div>
 
       {/* Slots */}
-      <span className={`text-xs shrink-0 mt-0.5 tabular-nums ${full ? "text-destructive" : "text-muted-foreground"}`}>
+      <span
+        className={`text-xs shrink-0 mt-0.5 tabular-nums ${full ? "text-destructive" : "text-muted-foreground"}`}
+      >
         {full ? "FULL" : `${slots} slots`}
       </span>
     </button>
-  )
+  );
 }
