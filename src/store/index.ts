@@ -1,11 +1,11 @@
-import { create } from "zustand"
-import { persist, createJSONStorage } from "zustand/middleware"
-import { get, set, del } from "idb-keyval"
-import { createCourseSlice, type CourseSlice } from "./courseSlice"
-import { createScheduleSlice, type ScheduleSlice } from "./scheduleSlice"
-import { createUISlice, type UISlice } from "./uiSlice"
+import { del, get, set } from "idb-keyval";
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
+import { type CourseSlice, createCourseSlice } from "./courseSlice";
+import { createScheduleSlice, type ScheduleSlice } from "./scheduleSlice";
+import { createUISlice, type UISlice } from "./uiSlice";
 
-export type GlobalStore = CourseSlice & ScheduleSlice & UISlice
+export type GlobalStore = CourseSlice & ScheduleSlice & UISlice;
 
 export const useStore = create<GlobalStore>()(
   persist(
@@ -22,6 +22,6 @@ export const useStore = create<GlobalStore>()(
         removeItem: async (key) => await del(key),
       })),
       skipHydration: true,
-    }
-  )
-)
+    },
+  ),
+);
