@@ -1,9 +1,5 @@
 export type Day = "M" | "T" | "W" | "Th" | "F" | "S"
 
-export type ApiCourse = {
-  COURSE_CREATION_ID: number
-  COURSE_NAME: string
-}
 
 export type Meeting = {
   day: Day
@@ -53,8 +49,3 @@ export type UserSchedule = {
   courses: SavedCourse[]
   createdAt: number
 }
-
-
-
-
-

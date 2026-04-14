@@ -3,143 +3,23 @@
 import { useEffect, useRef, useState } from "react"
 import {
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
-  X, Search, Loader2, AlertCircle, RefreshCw, Check, Bookmark, Pencil, Trash2,
+  X, Search, Loader2, AlertCircle, RefreshCw, Bookmark, Pencil, Trash2,
 } from "lucide-react"
+import { CookieSetup } from "@/features/auth/components/CookieSetup"
+import { SectionRow } from "@/features/courses/components/SectionRow"
 import { useStore } from "@/store"
 import { buildCourse } from "@/lib/parser"
-import { generateSchedules } from "@/lib/scheduler"
+import { generateSchedules } from "@/features/scheduler/utils/generator"
 import { ScheduleGrid } from "@/components/ScheduleGrid"
+import { fmtTime, meetingSummary } from "@/lib/utils"
 import type { ApiCourse, ApiSection } from "@/lib/schema"
-import type { Course, Schedule, Section, Meeting, UserSchedule, SavedCourse } from "@/types"
+import type { Course, Schedule, Section, UserSchedule, SavedCourse } from "@/types"
 
 // Known DLSU academic sessions
 const SESSIONS = [
   { id: "135", label: "AY 2025-2026 Term 3" },
   { id: "4",   label: "AY 2025-2026 Term 2" },
 ]
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function fmtTime(t: number): string {
-  const h = Math.floor(t / 100)
-  const m = t % 100
-  const ampm = h >= 12 ? "PM" : "AM"
-  const display = h > 12 ? h - 12 : h === 0 ? 12 : h
-  return `${display}:${String(m).padStart(2, "0")} ${ampm}`
-}
-
-function meetingSummary(meetings: Meeting[]): string {
-  if (meetings.length === 0) return "TBA"
-  return meetings.map((m) => `${m.day} ${fmtTime(m.start)}–${fmtTime(m.end)}`).join(" · ")
-}
-
-// ─── Cookie setup ─────────────────────────────────────────────────────────────
-
-function CookieSetup({ onSave }: { onSave: (cookie: string) => void }) {
-  const [value, setValue] = useState("")
-  const [error, setError] = useState("")
-
-  function handle() {
-    const trimmed = value.trim()
-    if (!trimmed) { setError("Paste your session cookie first."); return }
-    onSave(trimmed)
-  }
-
-  return (
-    <div className="flex flex-1 items-center justify-center px-4 py-16">
-      <div className="w-full max-w-lg">
-        <h1 className="text-3xl font-bold tracking-tight mb-1">Slottle</h1>
-        <p className="text-muted-foreground mb-8">Schedule generator for DLSU Archers Hub</p>
-
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
-          <div>
-            <h2 className="font-semibold mb-1">Connect your Archers Hub session</h2>
-            <p className="text-sm text-muted-foreground">
-              Your cookie stays in your browser — never sent to our servers.
-            </p>
-          </div>
-
-          <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-            <li>Log in to Archers Hub in another tab</li>
-            <li>Open DevTools (F12) → <strong>Network</strong> tab</li>
-            <li>Click any request to <code className="font-mono text-xs bg-muted px-1 rounded">archershub.dlsu.edu.ph</code></li>
-            <li>Under <strong>Request Headers</strong>, copy the full <code className="font-mono text-xs bg-muted px-1 rounded">cookie:</code> value</li>
-          </ol>
-
-          <textarea
-            className="w-full h-24 rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-            placeholder="cf_clearance=…; __RequestVerificationToken=…; __Secure-SID=…"
-            value={value}
-            onChange={(e) => { setValue(e.target.value); setError("") }}
-          />
-
-          {error && (
-            <p className="text-sm text-destructive flex items-center gap-1.5">
-              <AlertCircle className="size-3.5 shrink-0" /> {error}
-            </p>
-          )}
-
-          <button
-            onClick={handle}
-            className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            Connect
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Section row ─────────────────────────────────────────────────────────────
-
-function SectionRow({
-  section,
-  included,
-  onToggle,
-  color,
-}: {
-  section: Section
-  included: boolean
-  onToggle: () => void
-  color: string
-}) {
-  const slots = section.capacity - section.enlisted
-  const full = slots <= 0
-
-  return (
-    <button
-      onClick={onToggle}
-      className={`w-full flex items-start gap-3 px-4 py-2.5 text-left transition-colors hover:bg-muted/50 ${
-        included ? "" : "opacity-40"
-      }`}
-    >
-      {/* Checkbox */}
-      <span
-        className={`mt-0.5 size-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-          included ? "border-transparent" : "border-input bg-background"
-        }`}
-        style={included ? { backgroundColor: color } : {}}
-      >
-        {included && <Check className="size-2.5 text-white" />}
-      </span>
-
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-sm font-medium">{section.section}</span>
-          <span className="text-xs text-muted-foreground truncate">{section.professor || "TBA"}</span>
-        </div>
-        <p className="text-xs text-muted-foreground mt-0.5">{meetingSummary(section.meetings)}</p>
-      </div>
-
-      {/* Slots */}
-      <span className={`text-xs shrink-0 mt-0.5 tabular-nums ${full ? "text-destructive" : "text-muted-foreground"}`}>
-        {full ? "FULL" : `${slots} slots`}
-      </span>
-    </button>
-  )
-}
 
 // ─── Course card ──────────────────────────────────────────────────────────────
 
