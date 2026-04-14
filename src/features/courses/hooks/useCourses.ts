@@ -11,6 +11,7 @@ type UseCourses = {
   allCourses: ApiCourse[]
   coursesLoading: boolean
   coursesError: string
+  courseAddError: string
   selectedCourses: Course[]
   loadingCourseId: string | null
   includedSectionIds: Record<string, Set<string>>
@@ -26,12 +27,14 @@ type UseCourses = {
   setSearch: (value: string) => void
   setDropdownOpen: (open: boolean) => void
   clearCoursesError: () => void
+  clearCourseAddError: () => void
 }
 
 export function useCourses(): UseCourses {
   const [allCourses, setAllCourses] = useState<ApiCourse[]>([])
   const [coursesLoading, setCoursesLoading] = useState(false)
   const [coursesError, setCoursesError] = useState("")
+  const [courseAddError, setCourseAddError] = useState("")
   const [selectedCourses, setSelectedCourses] = useState<Course[]>([])
   const [loadingCourseId, setLoadingCourseId] = useState<string | null>(null)
   const [includedSectionIds, setIncludedSectionIds] = useState<Record<string, Set<string>>>({})
@@ -66,6 +69,7 @@ export function useCourses(): UseCourses {
     setSearch("")
     setDropdownOpen(false)
     setLoadingCourseId(courseId)
+    setCourseAddError("")
     try {
       const sections = await courseService.getSections(cookie, sessionId, courseId)
       const course = buildCourse(apiCourse, sections, selectedCourses.length)
@@ -75,8 +79,8 @@ export function useCourses(): UseCourses {
         ...prev,
         [course.id]: new Set(course.sections.map((s) => s.id)),
       }))
-    } catch {
-      // silent
+    } catch (err) {
+      setCourseAddError(err instanceof Error ? err.message : "Failed to load course sections")
     } finally {
       setLoadingCourseId(null)
     }
@@ -125,6 +129,8 @@ export function useCourses(): UseCourses {
     toggleAllSections,
     setSearch,
     setDropdownOpen,
+    courseAddError,
     clearCoursesError: () => setCoursesError(""),
+    clearCourseAddError: () => setCourseAddError(""),
   }
 }

@@ -1,4 +1,5 @@
-import type { ApiCourse, ApiSection } from "@/lib/schema";
+import { z } from "zod";
+import { apiCourseSchema, apiSectionSchema, type ApiCourse, type ApiSection } from "@/lib/schema";
 
 class CourseService {
   async getCourses(cookie: string, sessionId: string): Promise<ApiCourse[]> {
@@ -8,7 +9,10 @@ class CourseService {
     const body = await r.json();
     if (!r.ok)
       throw new Error(body.error + (body.detail ? ` — ${body.detail}` : ""));
-    return body as ApiCourse[];
+    const parsed = z.array(apiCourseSchema).safeParse(body);
+    if (!parsed.success)
+      throw new Error("Unexpected course list shape from server");
+    return parsed.data;
   }
 
   async getSections(
@@ -20,8 +24,11 @@ class CourseService {
       headers: { "x-archers-cookie": cookie, "x-academic-session": sessionId },
     });
     const body = await r.json();
-    if (!r.ok) throw new Error(body.error);
-    return body as ApiSection[];
+    if (!r.ok) throw new Error(body.error ?? "Failed to load sections");
+    const parsed = z.array(apiSectionSchema).safeParse(body);
+    if (!parsed.success)
+      throw new Error("Unexpected section data shape from server");
+    return parsed.data;
   }
 }
 

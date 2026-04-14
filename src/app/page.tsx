@@ -113,6 +113,7 @@ export default function Home() {
           allCourses={courses.allCourses}
           coursesLoading={courses.coursesLoading}
           coursesError={courses.coursesError}
+          courseAddError={courses.courseAddError}
           selectedCourses={courses.selectedCourses}
           loadingCourseId={courses.loadingCourseId}
           includedSectionIds={courses.includedSectionIds}
@@ -134,6 +135,8 @@ export default function Home() {
           schedules={scheduler.schedules}
           activeIndex={scheduler.activeIndex}
           generating={scheduler.generating}
+          generateError={scheduler.generateError}
+          truncated={scheduler.truncated}
           canGenerate={canGenerate}
           selectedCourses={courses.selectedCourses}
           onGenerate={() => scheduler.generate(courses.selectedCourses, courses.includedSectionIds)}

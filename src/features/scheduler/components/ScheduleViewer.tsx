@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { AlertCircle, Bookmark, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScheduleGrid } from "@/features/calendar/components/ScheduleGrid";
 import { meetingSummary } from "@/lib/utils";
@@ -10,6 +10,8 @@ type Props = {
   schedules: Schedule[];
   activeIndex: number;
   generating: boolean;
+  generateError: string;
+  truncated: boolean;
   canGenerate: boolean;
   selectedCourses: Course[];
   onGenerate: () => void;
@@ -22,6 +24,8 @@ export function ScheduleViewer({
   schedules,
   activeIndex,
   generating,
+  generateError,
+  truncated,
   canGenerate,
   selectedCourses,
   onGenerate,
@@ -32,7 +36,7 @@ export function ScheduleViewer({
   return (
     <>
       {/* Generate */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <Button
           onClick={onGenerate}
           disabled={!canGenerate}
@@ -43,19 +47,28 @@ export function ScheduleViewer({
         </Button>
         {schedules.length > 0 && (
           <p className="text-sm text-muted-foreground">
-            {schedules.length} valid combination
-            {schedules.length !== 1 ? "s" : ""} found
+            {truncated
+              ? `Showing first ${schedules.length.toLocaleString()} combinations (cap reached)`
+              : `${schedules.length} valid combination${schedules.length !== 1 ? "s" : ""} found`}
           </p>
         )}
         {!generating &&
           schedules.length === 0 &&
           selectedCourses.length > 0 &&
-          canGenerate && (
+          canGenerate &&
+          !generateError && (
             <p className="text-sm text-muted-foreground">
               No conflict-free combinations with selected sections.
             </p>
           )}
       </div>
+
+      {generateError && (
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <AlertCircle className="size-4 shrink-0 mt-0.5" />
+          <p>{generateError}</p>
+        </div>
+      )}
 
       {/* Schedule viewer */}
       {schedules.length > 0 && (

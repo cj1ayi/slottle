@@ -11,6 +11,7 @@ type Props = {
   allCourses: ApiCourse[];
   coursesLoading: boolean;
   coursesError: string;
+  courseAddError: string;
   selectedCourses: Course[];
   loadingCourseId: string | null;
   includedSectionIds: Record<string, Set<string>>;
@@ -32,6 +33,7 @@ export function CourseSearch({
   allCourses,
   coursesLoading,
   coursesError,
+  courseAddError,
   selectedCourses,
   loadingCourseId,
   includedSectionIds,
@@ -167,6 +169,12 @@ export function CourseSearch({
           </div>
         )}
       </div>
+
+      {courseAddError && (
+        <p className="mt-2 flex items-center gap-1.5 text-sm text-destructive">
+          <AlertCircle className="size-3.5 shrink-0" /> {courseAddError}
+        </p>
+      )}
 
       {selectedCourses.length > 0 && (
         <ul className="mt-3 space-y-2">
