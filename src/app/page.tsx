@@ -1,216 +1,34 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import {
-  ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
-  X, Search, Loader2, AlertCircle, RefreshCw, Bookmark, Pencil, Trash2,
-} from "lucide-react"
-import { CookieSetup } from "@/features/auth/components/CookieSetup"
-import { SectionRow } from "@/features/courses/components/SectionRow"
+import { Loader2 } from "lucide-react"
 import { useStore } from "@/store"
-import { buildCourse } from "@/lib/parser"
-import { generateSchedules } from "@/features/scheduler/utils/generator"
-import { ScheduleGrid } from "@/components/ScheduleGrid"
-import { fmtTime, meetingSummary } from "@/lib/utils"
-import type { ApiCourse, ApiSection } from "@/lib/schema"
-import type { Course, Schedule, Section, UserSchedule, SavedCourse } from "@/types"
+import { CookieSetup } from "@/features/auth/components/CookieSetup"
+import { CourseSearch } from "@/features/courses/components/CourseSearch"
+import { useCourses } from "@/features/courses/hooks/useCourses"
+import { ScheduleViewer } from "@/features/scheduler/components/ScheduleViewer"
+import { useScheduler } from "@/features/scheduler/hooks/useScheduler"
+import { SavedList } from "@/features/saved/components/SavedList"
+import { useSaved } from "@/features/saved/hooks/useSaved"
 
-// Known DLSU academic sessions
 const SESSIONS = [
   { id: "135", label: "AY 2025-2026 Term 3" },
   { id: "4",   label: "AY 2025-2026 Term 2" },
 ]
 
-// ─── Course card ──────────────────────────────────────────────────────────────
-
-function CourseCard({
-  course,
-  includedIds,
-  onRemove,
-  onToggleSection,
-  onToggleAll,
-}: {
-  course: Course
-  includedIds: Set<string>
-  onRemove: () => void
-  onToggleSection: (sectionId: string) => void
-  onToggleAll: (include: boolean) => void
-}) {
-  const [open, setOpen] = useState(true)
-  const includedCount = course.sections.filter((s) => includedIds.has(s.id)).length
-  const allOn = includedCount === course.sections.length
-
-  return (
-    <li className="rounded-lg border border-border bg-card overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-3 py-2.5">
-        <span className="size-3 rounded-full shrink-0" style={{ backgroundColor: course.color }} />
-        <button className="flex-1 min-w-0 text-left" onClick={() => setOpen((o) => !o)}>
-          <p className="text-sm font-medium truncate">{course.name}</p>
-          <p className="text-xs text-muted-foreground">
-            {includedCount}/{course.sections.length} sections · {course.units} unit{course.units !== 1 ? "s" : ""}
-          </p>
-        </button>
-        <button onClick={() => setOpen((o) => !o)} className="p-1 text-muted-foreground hover:text-foreground">
-          {open ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-        </button>
-        <button onClick={onRemove} className="p-1 text-muted-foreground hover:text-foreground">
-          <X className="size-3.5" />
-        </button>
-      </div>
-
-      {/* Section list */}
-      {open && (
-        <div className="border-t border-border">
-          {/* Select all / none */}
-          <div className="flex items-center justify-between px-4 py-1.5 bg-muted/30">
-            <span className="text-xs text-muted-foreground">Sections</span>
-            <button
-              onClick={() => onToggleAll(!allOn)}
-              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
-            >
-              {allOn ? "Deselect all" : "Select all"}
-            </button>
-          </div>
-          {course.sections.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-muted-foreground">No sections found for this term.</p>
-          ) : (
-            course.sections.map((section) => (
-              <SectionRow
-                key={section.id}
-                section={section}
-                included={includedIds.has(section.id)}
-                onToggle={() => onToggleSection(section.id)}
-                color={course.color}
-              />
-            ))
-          )}
-        </div>
-      )}
-    </li>
-  )
-}
-
-// ─── Saved schedule card ──────────────────────────────────────────────────────
-
-function SavedScheduleCard({
-  entry,
-  onRename,
-  onRemove,
-}: {
-  entry: UserSchedule
-  onRename: (name: string) => void
-  onRemove: () => void
-}) {
-  const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(entry.name)
-
-  function commitRename() {
-    const trimmed = draft.trim()
-    if (trimmed && trimmed !== entry.name) onRename(trimmed)
-    else setDraft(entry.name)
-    setEditing(false)
-  }
-
-  const date = new Date(entry.createdAt).toLocaleDateString(undefined, {
-    month: "short", day: "numeric",
-  })
-
-  return (
-    <li className="rounded-lg border border-border bg-card overflow-hidden">
-      <div className="flex items-center gap-2 px-3 py-2.5">
-        <button onClick={() => setOpen((o) => !o)} className="p-1 text-muted-foreground hover:text-foreground">
-          {open ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-        </button>
-
-        {editing ? (
-          <input
-            autoFocus
-            className="flex-1 min-w-0 text-sm font-medium bg-transparent border-b border-ring focus:outline-none"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={commitRename}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") commitRename()
-              if (e.key === "Escape") { setDraft(entry.name); setEditing(false) }
-            }}
-          />
-        ) : (
-          <button
-            className="flex-1 min-w-0 text-left"
-            onClick={() => setOpen((o) => !o)}
-          >
-            <span className="text-sm font-medium truncate block">{entry.name}</span>
-          </button>
-        )}
-
-        <span className="text-xs text-muted-foreground shrink-0">{date}</span>
-        <button onClick={() => setEditing(true)} className="p-1 text-muted-foreground hover:text-foreground">
-          <Pencil className="size-3.5" />
-        </button>
-        <button onClick={onRemove} className="p-1 text-muted-foreground hover:text-destructive">
-          <Trash2 className="size-3.5" />
-        </button>
-      </div>
-
-      {open && (
-        <div className="border-t border-border">
-          <div className="p-3">
-            <ScheduleGrid
-              schedule={entry.schedule}
-              courses={entry.courses as Course[]}
-            />
-          </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 pb-3">
-            {entry.schedule.sections.map((s) => {
-              const course = entry.courses.find((c) => c.code === s.code)
-              return (
-                <div key={s.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className="size-2.5 rounded-sm shrink-0" style={{ backgroundColor: course?.color }} />
-                  <span className="font-medium text-foreground">{s.code} {s.section}</span>
-                  <span>— {s.professor || "TBA"} · {meetingSummary(s.meetings)}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-    </li>
-  )
-}
-
-// ─── Main app ─────────────────────────────────────────────────────────────────
-
 export default function Home() {
   const cookie = useStore((s) => s.cookie)
   const setCookie = useStore((s) => s.setCookie)
   const clearCookie = useStore((s) => s.clearCookie)
-  const saved = useStore((s) => s.saved)
-  const saveSchedule = useStore((s) => s.saveSchedule)
-  const renameSaved = useStore((s) => s.renameSaved)
-  const removeSaved = useStore((s) => s.removeSaved)
 
   const [hydrated, setHydrated] = useState(false)
   const [sessionId, setSessionId] = useState("135")
 
-  const [allCourses, setAllCourses] = useState<ApiCourse[]>([])
-  const [coursesLoading, setCoursesLoading] = useState(false)
-  const [coursesError, setCoursesError] = useState("")
+  const courses = useCourses()
+  const scheduler = useScheduler()
+  const saved = useSaved()
 
-  const [search, setSearch] = useState("")
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [selectedCourses, setSelectedCourses] = useState<Course[]>([])
-  const [loadingCourseId, setLoadingCourseId] = useState<string | null>(null)
-  // Which section IDs are included per course
-  const [includedSectionIds, setIncludedSectionIds] = useState<Record<string, Set<string>>>({})
-
-  const [schedules, setSchedules] = useState<Schedule[]>([])
-  const [activeIndex, setActiveIndex] = useState(0)
-  const [generating, setGenerating] = useState(false)
-
-  const searchRef = useRef<HTMLInputElement>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const lastFetchedCookie = useRef("")
 
   // Hydrate store
   useEffect(() => {
@@ -218,169 +36,39 @@ export default function Home() {
     Promise.resolve(result).then(() => setHydrated(true))
   }, [])
 
-  function fetchCourses(sid: string) {
-    setAllCourses([])
-    setSelectedCourses([])
-    setIncludedSectionIds({})
-    setSchedules([])
-    setCoursesLoading(true)
-    setCoursesError("")
-    fetch("/api/courses", {
-      headers: { "x-archers-cookie": cookie, "x-academic-session": sid },
-    })
-      .then(async (r) => {
-        const body = await r.json()
-        if (!r.ok) throw new Error(body.error + (body.detail ? ` — ${body.detail}` : ""))
-        return body as ApiCourse[]
-      })
-      .then((data) => { setAllCourses(data); setCoursesLoading(false) })
-      .catch((err: Error) => { setCoursesError(err.message); setCoursesLoading(false) })
-  }
-
-  // Track which cookie value we last fetched for, so that any new cookie
-  // (including after "Change cookie") triggers a fresh load automatically.
-  const lastFetchedCookie = useRef("")
+  // Auto-fetch courses when cookie changes
   useEffect(() => {
     if (!hydrated || !cookie || lastFetchedCookie.current === cookie) return
     lastFetchedCookie.current = cookie
-    fetchCourses(sessionId)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    courses.loadCourses(cookie, sessionId)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: loadCourses is stable via useCallback, intentionally only re-fetch on cookie change
   }, [hydrated, cookie])
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node) &&
-        searchRef.current !== e.target
-      ) setDropdownOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [])
-
   if (!hydrated) {
-    return <div className="flex flex-1 items-center justify-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      </div>
+    )
   }
   if (!cookie) return <CookieSetup onSave={setCookie} />
 
-  // ─── Actions ────────────────────────────────────────────────────────────────
-
   function selectSession(sid: string) {
     setSessionId(sid)
-    fetchCourses(sid)
+    courses.loadCourses(cookie, sid)
   }
 
-  const selectedIds = new Set(selectedCourses.map((c) => c.id))
-  const filtered = search.trim()
-    ? allCourses.filter(
-        (c) =>
-          !selectedIds.has(String(c.COURSE_CREATION_ID)) &&
-          c.COURSE_NAME.toLowerCase().includes(search.toLowerCase())
-      )
-    : []
-
-  async function addCourse(apiCourse: ApiCourse) {
-    const courseId = String(apiCourse.COURSE_CREATION_ID)
-    if (selectedIds.has(courseId) || loadingCourseId) return
-    setSearch("")
-    setDropdownOpen(false)
-    setLoadingCourseId(courseId)
-    try {
-      const r = await fetch(`/api/sections/${courseId}`, {
-        headers: { "x-archers-cookie": cookie, "x-academic-session": sessionId },
-      })
-      const body = await r.json()
-      if (!r.ok) throw new Error(body.error)
-      const sections = body as ApiSection[]
-      const course = buildCourse(apiCourse, sections, selectedCourses.length)
-      setSelectedCourses((prev) => [...prev, course])
-      // Default: all sections included
-      setIncludedSectionIds((prev) => ({
-        ...prev,
-        [course.id]: new Set(course.sections.map((s) => s.id)),
-      }))
-      setSchedules([])
-    } catch {
-      // silent
-    } finally {
-      setLoadingCourseId(null)
-    }
-  }
-
-  function removeCourse(id: string) {
-    setSelectedCourses((prev) => prev.filter((c) => c.id !== id))
-    setIncludedSectionIds((prev) => { const n = { ...prev }; delete n[id]; return n })
-    setSchedules([])
-    setActiveIndex(0)
-  }
-
-  function toggleSection(courseId: string, sectionId: string) {
-    setIncludedSectionIds((prev) => {
-      const current = new Set(prev[courseId] ?? [])
-      if (current.has(sectionId)) current.delete(sectionId)
-      else current.add(sectionId)
-      return { ...prev, [courseId]: current }
-    })
-    setSchedules([])
-  }
-
-  function toggleAllSections(courseId: string, include: boolean) {
-    const course = selectedCourses.find((c) => c.id === courseId)
-    if (!course) return
-    setIncludedSectionIds((prev) => ({
-      ...prev,
-      [courseId]: include ? new Set(course.sections.map((s) => s.id)) : new Set(),
-    }))
-    setSchedules([])
-  }
-
-  function generate() {
-    // Build courses using only the user-selected sections
-    const coursesForGen = selectedCourses
-      .map((c) => ({
-        ...c,
-        sections: c.sections.filter((s) => includedSectionIds[c.id]?.has(s.id) ?? false),
-      }))
-      .filter((c) => c.sections.length > 0)
-
-    if (coursesForGen.length === 0) return
-    setGenerating(true)
-    setTimeout(() => {
-      setSchedules(generateSchedules(coursesForGen))
-      setActiveIndex(0)
-      setGenerating(false)
-    }, 0)
-  }
-
-  function saveCurrentSchedule() {
-    const schedule = schedules[activeIndex]
-    if (!schedule) return
-    const courses: SavedCourse[] = selectedCourses.map((c) => ({
-      id: c.id,
-      code: c.code,
-      name: c.name,
-      color: c.color,
-      units: c.units,
-    }))
-    const entry: UserSchedule = {
-      id: crypto.randomUUID(),
-      name: `Schedule ${saved.length + 1}`,
-      schedule,
-      courses,
-      createdAt: Date.now(),
-    }
-    saveSchedule(entry)
+  function handleRepasteCookie() {
+    clearCookie()
+    lastFetchedCookie.current = ""
+    scheduler.clearSchedules()
   }
 
   const canGenerate =
-    selectedCourses.length > 0 &&
-    !loadingCourseId &&
-    !generating &&
-    selectedCourses.some((c) => (includedSectionIds[c.id]?.size ?? 0) > 0)
-
-  // ─── Render ──────────────────────────────────────────────────────────────────
+    courses.selectedCourses.length > 0 &&
+    !courses.loadingCourseId &&
+    !scheduler.generating &&
+    courses.selectedCourses.some((c) => (courses.includedSectionIds[c.id]?.size ?? 0) > 0)
 
   return (
     <div className="flex flex-1 flex-col min-h-0">
@@ -391,14 +79,7 @@ export default function Home() {
           <span className="text-muted-foreground text-sm hidden sm:block">— DLSU schedule generator</span>
         </div>
         <button
-          onClick={() => {
-            clearCookie()
-            setAllCourses([])
-            setSelectedCourses([])
-            setSchedules([])
-            setCoursesError("")
-            lastFetchedCookie.current = ""
-          }}
+          onClick={handleRepasteCookie}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           Change cookie
@@ -427,183 +108,46 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Course search */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold">Add courses</h2>
-            <span className="text-xs text-muted-foreground">
-              {coursesLoading ? "Loading…" : coursesError ? "Error" : `${allCourses.length} courses`}
-            </span>
-          </div>
+        {/* Course search + section picker */}
+        <CourseSearch
+          allCourses={courses.allCourses}
+          coursesLoading={courses.coursesLoading}
+          coursesError={courses.coursesError}
+          selectedCourses={courses.selectedCourses}
+          loadingCourseId={courses.loadingCourseId}
+          includedSectionIds={courses.includedSectionIds}
+          search={courses.search}
+          dropdownOpen={courses.dropdownOpen}
+          filtered={courses.filtered}
+          onAddCourse={(c) => courses.addCourse(c, cookie, sessionId)}
+          onRemoveCourse={(id) => courses.removeCourse(id, scheduler.clearSchedules)}
+          onToggleSection={(cid, sid) => courses.toggleSection(cid, sid, scheduler.clearSchedules)}
+          onToggleAll={(cid, include) => courses.toggleAllSections(cid, include, scheduler.clearSchedules)}
+          onSearchChange={courses.setSearch}
+          onDropdownChange={courses.setDropdownOpen}
+          onRetry={() => courses.loadCourses(cookie, sessionId)}
+          onRepasteCookie={handleRepasteCookie}
+        />
 
-          {coursesError && (
-            <div className="mb-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 font-medium">
-                  <AlertCircle className="size-4 shrink-0" /> Could not fetch courses.
-                </div>
-                <button onClick={() => fetchCourses(sessionId)} className="flex items-center gap-1 text-xs underline underline-offset-2">
-                  <RefreshCw className="size-3" /> Retry
-                </button>
-              </div>
-              <p className="font-mono text-xs break-all opacity-80">{coursesError}</p>
-            </div>
-          )}
-
-          <div className="relative">
-            <div className="relative flex items-center">
-              {coursesLoading || loadingCourseId ? (
-                <Loader2 className="absolute left-3 size-4 animate-spin text-muted-foreground" />
-              ) : (
-                <Search className="absolute left-3 size-4 text-muted-foreground" />
-              )}
-              <input
-                ref={searchRef}
-                type="text"
-                className="w-full h-10 pl-9 pr-4 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
-                placeholder={
-                  coursesLoading ? "Loading courses…" :
-                  allCourses.length === 0 ? "No courses loaded" :
-                  `Search ${allCourses.length} courses…`
-                }
-                value={search}
-                disabled={coursesLoading}
-                onChange={(e) => { setSearch(e.target.value); setDropdownOpen(true) }}
-                onFocus={() => search && setDropdownOpen(true)}
-                onKeyDown={(e) => e.key === "Escape" && setDropdownOpen(false)}
-              />
-            </div>
-
-            {dropdownOpen && search.trim() && (
-              <div
-                ref={dropdownRef}
-                className="absolute z-10 mt-1 w-full rounded-lg border border-border bg-popover shadow-md max-h-64 overflow-y-auto"
-              >
-                {filtered.length > 0 ? (
-                  filtered.slice(0, 12).map((c, i) => (
-                    <button
-                      // Use compound key — API can return duplicate COURSE_CREATION_IDs
-                      key={`${c.COURSE_CREATION_ID}-${i}`}
-                      className="w-full px-3 py-2.5 text-left text-sm hover:bg-muted transition-colors"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => addCourse(c)}
-                    >
-                      {c.COURSE_NAME}
-                    </button>
-                  ))
-                ) : (
-                  <p className="px-3 py-2.5 text-sm text-muted-foreground">
-                    No courses match &ldquo;{search}&rdquo;
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Selected courses with section pickers */}
-          {selectedCourses.length > 0 && (
-            <ul className="mt-3 space-y-2">
-              {selectedCourses.map((course) => (
-                <CourseCard
-                  key={course.id}
-                  course={course}
-                  includedIds={includedSectionIds[course.id] ?? new Set()}
-                  onRemove={() => removeCourse(course.id)}
-                  onToggleSection={(sid) => toggleSection(course.id, sid)}
-                  onToggleAll={(include) => toggleAllSections(course.id, include)}
-                />
-              ))}
-            </ul>
-          )}
-        </section>
-
-        {/* Generate */}
-        <div className="flex items-center gap-4">
-          <button
-            onClick={generate}
-            disabled={!canGenerate}
-            className="h-10 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {generating && <Loader2 className="size-4 animate-spin" />}
-            Generate schedules
-          </button>
-          {schedules.length > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {schedules.length} valid combination{schedules.length !== 1 ? "s" : ""} found
-            </p>
-          )}
-          {!generating && schedules.length === 0 && selectedCourses.length > 0 && canGenerate && (
-            <p className="text-sm text-muted-foreground">No conflict-free combinations with selected sections.</p>
-          )}
-        </div>
-
-        {/* Schedule viewer */}
-        {schedules.length > 0 && (
-          <section className="space-y-3">
-            <div className="flex items-center gap-3">
-              <h2 className="text-sm font-semibold">Schedule</h2>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setActiveIndex((i) => Math.max(0, i - 1))}
-                  disabled={activeIndex === 0}
-                  className="p-1 rounded hover:bg-muted transition-colors disabled:opacity-30"
-                >
-                  <ChevronLeft className="size-4" />
-                </button>
-                <span className="text-sm tabular-nums min-w-[5rem] text-center text-muted-foreground">
-                  {activeIndex + 1} / {schedules.length}
-                </span>
-                <button
-                  onClick={() => setActiveIndex((i) => Math.min(schedules.length - 1, i + 1))}
-                  disabled={activeIndex === schedules.length - 1}
-                  className="p-1 rounded hover:bg-muted transition-colors disabled:opacity-30"
-                >
-                  <ChevronRight className="size-4" />
-                </button>
-              </div>
-              <button
-                onClick={saveCurrentSchedule}
-                className="ml-auto flex items-center gap-1.5 px-3 h-8 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors"
-              >
-                <Bookmark className="size-3.5" /> Save
-              </button>
-            </div>
-
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <ScheduleGrid schedule={schedules[activeIndex]} courses={selectedCourses} />
-            </div>
-
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              {schedules[activeIndex].sections.map((s) => {
-                const course = selectedCourses.find((c) => c.code === s.code)
-                return (
-                  <div key={s.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className="size-2.5 rounded-sm shrink-0" style={{ backgroundColor: course?.color }} />
-                    <span className="font-medium text-foreground">{s.code} {s.section}</span>
-                    <span>— {s.professor || "TBA"} · {meetingSummary(s.meetings)}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-        )}
+        {/* Schedule generator + viewer */}
+        <ScheduleViewer
+          schedules={scheduler.schedules}
+          activeIndex={scheduler.activeIndex}
+          generating={scheduler.generating}
+          canGenerate={canGenerate}
+          selectedCourses={courses.selectedCourses}
+          onGenerate={() => scheduler.generate(courses.selectedCourses, courses.includedSectionIds)}
+          onSave={() => saved.saveCurrentSchedule(scheduler.schedules[scheduler.activeIndex], courses.selectedCourses)}
+          onPrev={() => scheduler.setActiveIndex(Math.max(0, scheduler.activeIndex - 1))}
+          onNext={() => scheduler.setActiveIndex(Math.min(scheduler.schedules.length - 1, scheduler.activeIndex + 1))}
+        />
 
         {/* Saved schedules */}
-        {saved.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold">Saved schedules ({saved.length})</h2>
-            <ul className="space-y-2">
-              {saved.map((entry) => (
-                <SavedScheduleCard
-                  key={entry.id}
-                  entry={entry}
-                  onRename={(name) => renameSaved(entry.id, name)}
-                  onRemove={() => removeSaved(entry.id)}
-                />
-              ))}
-            </ul>
-          </section>
-        )}
+        <SavedList
+          saved={saved.saved}
+          onRename={saved.renameSaved}
+          onRemove={saved.removeSaved}
+        />
 
       </div>
     </div>
