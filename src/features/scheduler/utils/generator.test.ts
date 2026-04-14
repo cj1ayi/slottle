@@ -1,6 +1,6 @@
-import { expect, test } from "bun:test"
-import { generateSchedules } from "./generator"
-import type { Course } from "@/types"
+import { expect, test } from "bun:test";
+import type { Course } from "@/types";
+import { generateSchedules } from "./generator";
 
 const mockCourses: Course[] = [
   {
@@ -18,7 +18,9 @@ const mockCourses: Course[] = [
         locked: false,
         capacity: 30,
         enlisted: 20,
-        meetings: [{ day: "M", start: 900, end: 1030, room: "TBA", modality: "F2F" }],
+        meetings: [
+          { day: "M", start: 900, end: 1030, room: "TBA", modality: "F2F" },
+        ],
       },
       {
         id: "s2",
@@ -28,7 +30,9 @@ const mockCourses: Course[] = [
         locked: false,
         capacity: 30,
         enlisted: 20,
-        meetings: [{ day: "T", start: 900, end: 1030, room: "TBA", modality: "F2F" }],
+        meetings: [
+          { day: "T", start: 900, end: 1030, room: "TBA", modality: "F2F" },
+        ],
       },
     ],
   },
@@ -47,7 +51,9 @@ const mockCourses: Course[] = [
         locked: false,
         capacity: 30,
         enlisted: 20,
-        meetings: [{ day: "M", start: 900, end: 1030, room: "TBA", modality: "F2F" }],
+        meetings: [
+          { day: "M", start: 900, end: 1030, room: "TBA", modality: "F2F" },
+        ],
       },
       {
         id: "s4",
@@ -57,13 +63,15 @@ const mockCourses: Course[] = [
         locked: false,
         capacity: 30,
         enlisted: 20,
-        meetings: [{ day: "W", start: 900, end: 1030, room: "TBA", modality: "F2F" }],
+        meetings: [
+          { day: "W", start: 900, end: 1030, room: "TBA", modality: "F2F" },
+        ],
       },
     ],
   },
-]
+];
 
 test("generates valid non-conflicting schedules", () => {
-  const schedules = generateSchedules(mockCourses)
-  expect(schedules.length).toBe(3) // s1+s4, s2+s3, s2+s4 (s1+s3 conflict on M 9-10:30)
-})
+  const schedules = generateSchedules(mockCourses);
+  expect(schedules.length).toBe(3); // s1+s4, s2+s3, s2+s4 (s1+s3 conflict on M 9-10:30)
+});
