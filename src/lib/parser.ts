@@ -1,5 +1,5 @@
-import type { Day, Meeting, Section, Course } from "@/types"
-import type { ApiSection, ApiCourse } from "@/lib/schema"
+import type { ApiCourse, ApiSection } from "@/lib/schema";
+import type { Course, Day, Meeting, Section } from "@/types";
 
 const DAY_MAP: Record<string, Day> = {
   MON: "M",
@@ -8,49 +8,52 @@ const DAY_MAP: Record<string, Day> = {
   THU: "Th",
   FRI: "F",
   SAT: "S",
-}
+};
 
 // "07:30 AM" → 730, "01:30 PM" → 1330
 function parseTime(token: string): number {
-  const [hhmm, period] = token.trim().split(" ")
-  const [hStr, mStr] = hhmm.split(":")
-  let hours = parseInt(hStr, 10)
-  const minutes = parseInt(mStr, 10)
-  if (period === "PM" && hours !== 12) hours += 12
-  if (period === "AM" && hours === 12) hours = 0
-  return hours * 100 + minutes
+  const [hhmm, period] = token.trim().split(" ");
+  const [hStr, mStr] = hhmm.split(":");
+  let hours = parseInt(hStr, 10);
+  const minutes = parseInt(mStr, 10);
+  if (period === "PM" && hours !== 12) hours += 12;
+  if (period === "AM" && hours === 12) hours = 0;
+  return hours * 100 + minutes;
 }
 
 // "[ FRI - 07:30 AM - 09:00 AM ] [ TUE - 07:30 AM - 09:00 AM ]"
 // → [{ day: "F", start: 730, end: 900 }, { day: "T", start: 730, end: 900 }]
-export function parseSchedule(schedule: string): Omit<Meeting, "room" | "modality">[] {
-  const pattern = /\[\s*(\w+)\s*-\s*([\d:]+\s+[AP]M)\s*-\s*([\d:]+\s+[AP]M)\s*\]/g
-  const meetings: Omit<Meeting, "room" | "modality">[] = []
+export function parseSchedule(
+  schedule: string,
+): Omit<Meeting, "room" | "modality">[] {
+  const pattern =
+    /\[\s*(\w+)\s*-\s*([\d:]+\s+[AP]M)\s*-\s*([\d:]+\s+[AP]M)\s*\]/g;
+  const meetings: Omit<Meeting, "room" | "modality">[] = [];
 
-  let match: RegExpExecArray | null
+  let match: RegExpExecArray | null;
   while ((match = pattern.exec(schedule)) !== null) {
-    const [, dayStr, startStr, endStr] = match
-    const day = DAY_MAP[dayStr.toUpperCase()]
-    if (!day) continue
+    const [, dayStr, startStr, endStr] = match;
+    const day = DAY_MAP[dayStr.toUpperCase()];
+    if (!day) continue;
     meetings.push({
       day,
       start: parseTime(startStr),
       end: parseTime(endStr),
-    })
+    });
   }
 
-  return meetings
+  return meetings;
 }
 
 export function apiSectionToSection(
   apiSection: ApiSection,
-  courseCode: string
+  courseCode: string,
 ): Section {
   const meetings: Meeting[] = parseSchedule(apiSection.SCHEDULE).map((m) => ({
     ...m,
     room: "",
     modality: "F2F" as const,
-  }))
+  }));
 
   return {
     id: String(apiSection.SECTION_CREATION_ID),
@@ -61,7 +64,7 @@ export function apiSectionToSection(
     locked: false,
     capacity: apiSection.CAPACITY,
     enlisted: apiSection.ENLISTED,
-  }
+  };
 }
 
 const COURSE_COLORS = [
@@ -73,11 +76,11 @@ const COURSE_COLORS = [
   "#06B6D4",
   "#F97316",
   "#EC4899",
-]
+];
 
 export function apiCourseToPartial(
   apiCourse: ApiCourse,
-  colorIndex: number
+  colorIndex: number,
 ): Omit<Course, "sections"> {
   return {
     id: String(apiCourse.COURSE_CREATION_ID),
@@ -85,16 +88,16 @@ export function apiCourseToPartial(
     name: apiCourse.COURSE_NAME,
     units: 0, // populated after fetching sections
     color: COURSE_COLORS[colorIndex % COURSE_COLORS.length],
-  }
+  };
 }
 
 export function buildCourse(
   apiCourse: ApiCourse,
   apiSections: ApiSection[],
-  colorIndex: number
+  colorIndex: number,
 ): Course {
-  const partial = apiCourseToPartial(apiCourse, colorIndex)
-  const sections = apiSections.map((s) => apiSectionToSection(s, partial.code))
-  const units = apiSections[0]?.CREDITS ?? 0
-  return { ...partial, units, sections }
+  const partial = apiCourseToPartial(apiCourse, colorIndex);
+  const sections = apiSections.map((s) => apiSectionToSection(s, partial.code));
+  const units = apiSections[0]?.CREDITS ?? 0;
+  return { ...partial, units, sections };
 }
