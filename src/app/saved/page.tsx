@@ -283,7 +283,7 @@ function SavedCard({
       ctx.fillText(entry.name, padding, padding + 28);
       ctx.fillStyle = muted;
       ctx.font = "500 14px var(--font-sans, Inter, system-ui, sans-serif)";
-      ctx.fillText(`${date}  ${time}`, padding, padding + 54);
+      ctx.fillText(`${date} · ${time}`, padding, padding + 54);
 
       const gridTop = padding + headerH;
 
@@ -332,14 +332,6 @@ function SavedCard({
       });
 
       const colorMap = new Map(entry.courses.map((c) => [c.code, c.color]));
-      const withAlpha = (color: string, alpha: number) => {
-        const p = document.createElement("div");
-        p.style.color = color;
-        const rgb = getComputedStyle(p).color;
-        const m = rgb.match(/\d+/g);
-        if (!m || m.length < 3) return `rgba(107,114,128,${alpha})`;
-        return `rgba(${m[0]},${m[1]},${m[2]},${alpha})`;
-      };
 
       // Class blocks
       for (const section of entry.schedule.sections) {
@@ -360,8 +352,10 @@ function SavedCard({
           const w = dayColW - 8;
 
           drawRoundRect(ctx, x, y, w, Math.max(14, h), 6);
-          ctx.fillStyle = withAlpha(color, 0.22);
+          ctx.fillStyle = color;
+          ctx.globalAlpha = 0.22;
           ctx.fill();
+          ctx.globalAlpha = 1;
 
           ctx.fillStyle = color;
           ctx.fillRect(x, y, 4, Math.max(14, h));
@@ -370,9 +364,11 @@ function SavedCard({
           ctx.font = "700 12px var(--font-sans, Inter, system-ui, sans-serif)";
           ctx.fillText(section.code, x + 8, y + 14);
 
-          ctx.fillStyle = withAlpha(color, 0.85);
+          ctx.fillStyle = color;
+          ctx.globalAlpha = 0.85;
           ctx.font = "600 11px var(--font-sans, Inter, system-ui, sans-serif)";
           ctx.fillText(section.section, x + 8, y + 29);
+          ctx.globalAlpha = 1;
         }
       }
 
