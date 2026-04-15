@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
     .object({ CourseDrp: z.array(apiCourseSchema) })
     .safeParse(raw);
   if (!envelope.success) {
+    console.error("[courses] Unexpected shape from Archers Hub:", JSON.stringify(raw).slice(0, 800));
     return Response.json(
       {
         error: "Unexpected response shape",
