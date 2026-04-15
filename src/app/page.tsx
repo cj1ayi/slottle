@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   Bookmark,
   BookmarkCheck,
   Calendar,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   LayoutGrid,
@@ -23,7 +24,7 @@ import { useCourses } from "@/features/courses/hooks/useCourses";
 import { useScheduler } from "@/features/scheduler/hooks/useScheduler";
 import { useSaved } from "@/features/saved/hooks/useSaved";
 import { ScheduleGrid } from "@/features/calendar/components/ScheduleGrid";
-import { meetingSummary, groupMeetings, fmtTime } from "@/lib/utils";
+import { meetingSummary, groupMeetings, fmtTime, dayLabel } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import {
   NavLogo,
@@ -562,6 +563,8 @@ function CourseAddBar({
 }
 
 /* ── Section table ──────────────────────────────────────────────── */
+const DAY_ORDER_FILTER = ["M", "T", "W", "Th", "F", "S"] as const;
+
 function SectionTable({
   course,
   includedIds,
@@ -573,36 +576,167 @@ function SectionTable({
   onToggleSection: (sectionId: string) => void;
   onToggleAll: (include: boolean) => void;
 }) {
-  const allOn = includedIds.size === course.sections.length;
+  const [openFilter, setOpenFilter] = useState<string | null>(null);
+  const [filterProfs, setFilterProfs] = useState<Set<string>>(new Set());
+  const [filterDays, setFilterDays] = useState<Set<string>>(new Set());
+  const [filterTimes, setFilterTimes] = useState<Set<string>>(new Set());
+  const [showOnlyOpen, setShowOnlyOpen] = useState(false);
+
+  // Reset when switching courses
+  useEffect(() => {
+    setFilterProfs(new Set());
+    setFilterDays(new Set());
+    setFilterTimes(new Set());
+    setShowOnlyOpen(false);
+    setOpenFilter(null);
+  }, [course.id]);
+
+  const profOptions = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of course.sections) {
+      const p = s.professor || "TBA";
+      map.set(p, (map.get(p) ?? 0) + 1);
+    }
+    return [...map.entries()].sort((a, b) => b[1] - a[1]).map(([value, count]) => ({ value, count }));
+  }, [course.sections]);
+
+  const dayOptions = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of course.sections) {
+      const seen = new Set<string>();
+      for (const m of s.meetings) {
+        if (!seen.has(m.day)) { seen.add(m.day); map.set(m.day, (map.get(m.day) ?? 0) + 1); }
+      }
+    }
+    return DAY_ORDER_FILTER.filter((d) => map.has(d)).map((d) => ({ value: d, label: dayLabel(d), count: map.get(d)! }));
+  }, [course.sections]);
+
+  const timeOptions = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of course.sections) {
+      const seen = new Set<string>();
+      for (const m of s.meetings) {
+        const tk = `${m.start}-${m.end}`;
+        if (!seen.has(tk)) { seen.add(tk); map.set(tk, (map.get(tk) ?? 0) + 1); }
+      }
+    }
+    return [...map.entries()]
+      .sort((a, b) => Number(a[0].split("-")[0]) - Number(b[0].split("-")[0]))
+      .map(([key, count]) => {
+        const [s, e] = key.split("-");
+        return { value: key, label: `${fmtTime(Number(s))} – ${fmtTime(Number(e))}`, count };
+      });
+  }, [course.sections]);
+
+  const filtered = useMemo(() => {
+    return course.sections.filter((section) => {
+      if (filterProfs.size > 0 && !filterProfs.has(section.professor || "TBA")) return false;
+      if (filterDays.size > 0 && !section.meetings.some((m) => filterDays.has(m.day))) return false;
+      if (filterTimes.size > 0 && !section.meetings.some((m) => filterTimes.has(`${m.start}-${m.end}`))) return false;
+      if (showOnlyOpen && section.capacity - section.enlisted <= 0) return false;
+      return true;
+    });
+  }, [course.sections, filterProfs, filterDays, filterTimes, showOnlyOpen]);
+
+  const anyFilter = filterProfs.size > 0 || filterDays.size > 0 || filterTimes.size > 0 || showOnlyOpen;
+  const allOn = filtered.length > 0 && filtered.every((s) => includedIds.has(s.id));
+
+  function toggleSet(set: Set<string>, value: string, setter: (s: Set<string>) => void) {
+    const next = new Set(set);
+    if (next.has(value)) next.delete(value); else next.add(value);
+    setter(next);
+  }
+  function clearFilters() {
+    setFilterProfs(new Set()); setFilterDays(new Set()); setFilterTimes(new Set()); setShowOnlyOpen(false);
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="shrink-0 flex items-center gap-4 px-5 py-3 border-b border-border bg-background/60">
         <div className="flex items-center gap-2 min-w-0">
-          <span
-            className="size-2.5 rounded-full shrink-0"
-            style={{ backgroundColor: course.color }}
-          />
+          <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: course.color }} />
           <div className="min-w-0">
-            <span className="text-sm font-bold text-foreground truncate block">
-              {course.code}
-            </span>
-            <span className="text-[10px] text-muted-foreground truncate block">
-              {course.name}
-            </span>
+            <span className="text-sm font-bold text-foreground truncate block">{course.code}</span>
+            <span className="text-[10px] text-muted-foreground truncate block">{course.name}</span>
           </div>
         </div>
         <span className="text-xs text-muted-foreground">
-          {includedIds.size} of {course.sections.length} selected
+          {includedIds.size}/{course.sections.length} selected
+          {anyFilter && <span className="ml-1 opacity-60">· {filtered.length} shown</span>}
         </span>
-        <button
-          type="button"
-          onClick={() => onToggleAll(!allOn)}
+        <button type="button" onClick={() => onToggleAll(!allOn)}
           className="ml-auto text-xs font-semibold text-primary hover:opacity-70 transition-opacity"
         >
           {allOn ? "Deselect all" : "Select all"}
         </button>
+      </div>
+
+      {/* ── Filter chips ─────────────────────────────────────────── */}
+      <div className="shrink-0 flex items-center gap-1.5 px-5 py-2 border-b border-border/50 bg-background/20">
+        {openFilter && <div className="fixed inset-0 z-10" onClick={() => setOpenFilter(null)} />}
+
+        {/* Professor */}
+        <div className="relative z-20">
+          <SectionFilterChip label="Professor" count={filterProfs.size} open={openFilter === "prof"}
+            onClick={() => setOpenFilter(openFilter === "prof" ? null : "prof")} />
+          {openFilter === "prof" && (
+            <SectionFilterDropdown>
+              {profOptions.map(({ value, count }) => (
+                <SectionFilterOption key={value} label={value} count={count} checked={filterProfs.has(value)}
+                  onToggle={() => toggleSet(filterProfs, value, setFilterProfs)} />
+              ))}
+            </SectionFilterDropdown>
+          )}
+        </div>
+
+        {/* Days */}
+        <div className="relative z-20">
+          <SectionFilterChip label="Days" count={filterDays.size} open={openFilter === "days"}
+            onClick={() => setOpenFilter(openFilter === "days" ? null : "days")} />
+          {openFilter === "days" && (
+            <SectionFilterDropdown>
+              {dayOptions.map(({ value, label, count }) => (
+                <SectionFilterOption key={value} label={label} count={count} checked={filterDays.has(value)}
+                  onToggle={() => toggleSet(filterDays, value, setFilterDays)} />
+              ))}
+            </SectionFilterDropdown>
+          )}
+        </div>
+
+        {/* Schedule / time */}
+        <div className="relative z-20">
+          <SectionFilterChip label="Schedule" count={filterTimes.size} open={openFilter === "time"}
+            onClick={() => setOpenFilter(openFilter === "time" ? null : "time")} />
+          {openFilter === "time" && (
+            <SectionFilterDropdown>
+              {timeOptions.map(({ value, label, count }) => (
+                <SectionFilterOption key={value} label={label} count={count} checked={filterTimes.has(value)}
+                  onToggle={() => toggleSet(filterTimes, value, setFilterTimes)} />
+              ))}
+            </SectionFilterDropdown>
+          )}
+        </div>
+
+        {/* Has slots */}
+        <button type="button" onClick={() => setShowOnlyOpen((v) => !v)}
+          className={cn(
+            "flex items-center gap-1 h-7 px-2.5 rounded text-[11px] font-medium border transition-colors",
+            showOnlyOpen
+              ? "bg-primary/10 border-primary/30 text-primary"
+              : "border-border/60 text-muted-foreground hover:text-foreground hover:border-border",
+          )}
+        >
+          Has Slots
+        </button>
+
+        {anyFilter && (
+          <button onClick={clearFilters}
+            className="ml-auto text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       {/* Column headers */}
@@ -617,24 +751,72 @@ function SectionTable({
       </div>
 
       {/* Rows */}
-      {course.sections.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-          No sections for this term.
+      {filtered.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+          <span>{course.sections.length === 0 ? "No sections for this term." : "No sections match the filters."}</span>
+          {anyFilter && (
+            <button onClick={clearFilters} className="text-xs font-semibold text-primary hover:opacity-70">
+              Clear filters
+            </button>
+          )}
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto">
-          {course.sections.map((section) => (
-            <SectionTableRow
-              key={section.id}
-              section={section}
-              included={includedIds.has(section.id)}
-              color={course.color}
-              onToggle={() => onToggleSection(section.id)}
-            />
+          {filtered.map((section) => (
+            <SectionTableRow key={section.id} section={section}
+              included={includedIds.has(section.id)} color={course.color}
+              onToggle={() => onToggleSection(section.id)} />
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+/* ── Section filter sub-components ──────────────────────────────── */
+function SectionFilterChip({ label, count, open, onClick }: { label: string; count: number; open: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick}
+      className={cn(
+        "flex items-center gap-1 h-7 px-2.5 rounded text-[11px] font-medium border transition-colors",
+        count > 0 || open
+          ? "bg-primary/10 border-primary/30 text-primary"
+          : "border-border/60 text-muted-foreground hover:text-foreground hover:border-border",
+      )}
+    >
+      {label}
+      {count > 0 && (
+        <span className="size-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center leading-none">
+          {count}
+        </span>
+      )}
+      <ChevronDown className={cn("size-3 transition-transform", open && "rotate-180")} />
+    </button>
+  );
+}
+function SectionFilterDropdown({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="absolute top-full left-0 mt-1 min-w-[190px] bg-popover border border-border rounded-lg shadow-lg overflow-hidden z-30">
+      <div className="max-h-56 overflow-y-auto py-1">{children}</div>
+    </div>
+  );
+}
+function SectionFilterOption({ label, count, checked, onToggle }: { label: string; count: number; checked: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" onClick={onToggle}
+      className="w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors hover:bg-accent/50"
+    >
+      <span className={cn(
+        "size-3.5 rounded border-2 shrink-0 flex items-center justify-center transition-all",
+        checked ? "border-transparent bg-primary" : "border-muted-foreground/40",
+      )}>
+        {checked && <Check className="size-2 text-primary-foreground stroke-[3]" />}
+      </span>
+      <span className={cn("text-[11px] flex-1 truncate", checked ? "text-foreground font-medium" : "text-muted-foreground")}>
+        {label}
+      </span>
+      <span className="text-[10px] tabular-nums text-muted-foreground/60 shrink-0">{count}</span>
+    </button>
   );
 }
 
@@ -768,10 +950,7 @@ function SchedulesTab({
       <div className="flex-1 flex flex-col items-center justify-center select-none pointer-events-none px-8 py-16">
         <p
           className="font-[family-name:var(--font-outfit)] font-black leading-none text-foreground/[0.04]"
-          style={{
-            fontSize: "clamp(4rem,14vw,10rem)",
-            letterSpacing: "-0.04em",
-          }}
+          style={{ fontSize: "clamp(4rem,14vw,10rem)", letterSpacing: "-0.04em" }}
         >
           GENERATE
         </p>
@@ -782,9 +961,7 @@ function SchedulesTab({
               ? "Add courses in the Courses tab, then hit Generate."
               : "Hit Generate to find conflict-free combinations."}
         </p>
-        {generating && (
-          <Loader2 className="mt-3 size-4 animate-spin text-muted-foreground pointer-events-auto" />
-        )}
+        {generating && <Loader2 className="mt-3 size-4 animate-spin text-muted-foreground pointer-events-auto" />}
       </div>
     );
   }
@@ -793,48 +970,32 @@ function SchedulesTab({
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* Nav bar */}
       <div className="shrink-0 flex items-center gap-2 px-5 py-3 border-b border-border bg-background/60">
-        <button
-          type="button"
-          onClick={onPrev}
-          disabled={activeIndex === 0}
+        <button type="button" onClick={onPrev} disabled={activeIndex === 0}
           className="size-8 flex items-center justify-center rounded hover:bg-accent disabled:opacity-30 disabled:pointer-events-none transition-colors"
         >
           <ChevronLeft className="size-5 text-muted-foreground" />
         </button>
-
         <span className="text-sm font-medium tabular-nums min-w-[9rem] text-center">
-          Schedule{" "}
-          <span className="font-bold text-primary">{activeIndex + 1}</span> of{" "}
+          Schedule <span className="font-bold text-primary">{activeIndex + 1}</span> of{" "}
           <span className="font-bold">{schedules.length}</span>
         </span>
-
-        <button
-          type="button"
-          onClick={onNext}
-          disabled={activeIndex === schedules.length - 1}
+        <button type="button" onClick={onNext} disabled={activeIndex === schedules.length - 1}
           className="size-8 flex items-center justify-center rounded hover:bg-accent disabled:opacity-30 disabled:pointer-events-none transition-colors"
         >
           <ChevronRight className="size-5 text-muted-foreground" />
         </button>
-
         <div className="ml-auto">
           {isAlreadySaved ? (
-            <button
-              type="button"
-              onClick={onUnsave}
+            <button type="button" onClick={onUnsave}
               className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded border border-transparent hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive transition-colors text-[var(--tertiary)]"
             >
-              <BookmarkCheck className="size-3.5" />
-              Saved
+              <BookmarkCheck className="size-3.5" /> Saved
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={onSave}
+            <button type="button" onClick={onSave}
               className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
             >
-              <Bookmark className="size-3.5" />
-              Save
+              <Bookmark className="size-3.5" /> Save
             </button>
           )}
         </div>
@@ -845,25 +1006,14 @@ function SchedulesTab({
         <div className="rounded-lg overflow-hidden border border-border bg-card">
           <ScheduleGrid schedule={active} courses={selectedCourses} />
         </div>
-
         <div className="flex flex-wrap gap-x-5 gap-y-1.5">
           {active.sections.map((s) => {
             const course = selectedCourses.find((c) => c.code === s.code);
             return (
-              <div
-                key={`${s.id}-${s.code}`}
-                className="flex items-center gap-2 text-xs text-muted-foreground"
-              >
-                <span
-                  className="size-2.5 rounded-sm shrink-0"
-                  style={{ backgroundColor: course?.color }}
-                />
-                <span className="font-semibold text-foreground">
-                  {s.code} {s.section}
-                </span>
-                <span>
-                  — {s.professor || "TBA"} · {meetingSummary(s.meetings)}
-                </span>
+              <div key={`${s.id}-${s.code}`} className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="size-2.5 rounded-sm shrink-0" style={{ backgroundColor: course?.color }} />
+                <span className="font-semibold text-foreground">{s.code} {s.section}</span>
+                <span>— {s.professor || "TBA"} · {meetingSummary(s.meetings)}</span>
               </div>
             );
           })}
