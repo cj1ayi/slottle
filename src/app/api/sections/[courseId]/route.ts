@@ -4,6 +4,7 @@ import { hubFetch } from "@/lib/hub";
 import { apiSectionSchema } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 
 export async function GET(
   request: NextRequest,

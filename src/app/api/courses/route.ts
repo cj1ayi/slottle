@@ -4,6 +4,7 @@ import { hubFetch } from "@/lib/hub";
 import { apiCourseSchema } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 
 export async function GET(request: NextRequest) {
   const cookie = request.headers.get("x-archers-cookie");
@@ -56,8 +57,7 @@ export async function GET(request: NextRequest) {
     .object({ CourseDrp: z.array(apiCourseSchema) })
     .safeParse(raw);
   if (!envelope.success) {
-    console.error("[courses] Unexpected shape from Archers Hub:", JSON.stringify(raw).slice(0, 800));
-    return Response.json(
+return Response.json(
       {
         error: "Unexpected response shape",
         detail: JSON.stringify(raw).slice(0, 400),

@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server"
 import { hubFetch } from "@/lib/hub"
 
 export const dynamic = "force-dynamic"
+export const runtime = "edge"
 
 type SectionRef = { courseId: string; sectionId: string }
 
