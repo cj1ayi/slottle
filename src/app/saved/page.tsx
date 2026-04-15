@@ -170,26 +170,26 @@ function SavedCard({
   const handleDownload = useCallback(async () => {
     if (!exportRef.current || downloading) return;
     setDownloading(true);
+    let el: HTMLDivElement | null = null;
+    let appliedVarNames: string[] = [];
     try {
       const { toPng } = await import("html-to-image");
-      const el = exportRef.current;
-      const cs = getComputedStyle(document.documentElement);
+      el = exportRef.current;
 
-      // oklch colors aren't supported by the HTML canvas API, so we resolve
-      // every CSS var to an rgb value using a 1×1 canvas as a color parser.
-      function toRgb(cssValue: string): string {
-        const cvs = document.createElement("canvas");
-        cvs.width = cvs.height = 1;
-        const ctx = cvs.getContext("2d")!;
-        ctx.clearRect(0, 0, 1, 1);
-        ctx.fillStyle = cssValue;
-        ctx.fillRect(0, 0, 1, 1);
-        const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
-        if (a === 0) return "transparent";
-        return a === 255
-          ? `rgb(${r} ${g} ${b})`
-          : `rgba(${r}, ${g}, ${b}, ${(a / 255).toFixed(3)})`;
-      }
+      // Resolve CSS vars via computed styles so OKLCH tokens become RGB values.
+      const probe = document.createElement("div");
+      probe.style.position = "fixed";
+      probe.style.left = "-99999px";
+      probe.style.top = "0";
+      probe.style.width = "1px";
+      probe.style.height = "1px";
+      document.body.appendChild(probe);
+
+      const resolveVarToColor = (varName: string): string => {
+        probe.style.color = `var(${varName})`;
+        const resolved = getComputedStyle(probe).color.trim();
+        return resolved || "rgb(0 0 0)";
+      };
 
       // Vars used in inline styles and Tailwind classes (--color-* is Tailwind v4)
       const varNames = [
@@ -208,22 +208,27 @@ function SavedCard({
 
       // Inject resolved rgb vars directly onto the element so the clone inherits them
       for (const name of varNames) {
-        el.style.setProperty(name, toRgb(cs.getPropertyValue(name).trim()));
+        el.style.setProperty(name, resolveVarToColor(name));
+        appliedVarNames.push(name);
       }
       for (const [alias, source] of Object.entries(tailwindAliases)) {
         el.style.setProperty(alias, el.style.getPropertyValue(source));
+        appliedVarNames.push(alias);
       }
 
+      probe.remove();
+
+      // Ensure fonts/layout are ready before rasterizing.
+      await document.fonts.ready;
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+
       const bg = el.style.getPropertyValue("--card");
-      const options = { pixelRatio: 2, backgroundColor: bg };
+      const options = { pixelRatio: 2, backgroundColor: bg, cacheBust: true };
 
       // Two passes: first warms up font embedding, second captures correctly
       await toPng(el, options);
       const dataUrl = await toPng(el, options);
-
-      // Clean up injected vars
-      for (const name of varNames) el.style.removeProperty(name);
-      for (const alias of Object.keys(tailwindAliases)) el.style.removeProperty(alias);
 
       const link = document.createElement("a");
       link.download = `${entry.name.replace(/[^a-z0-9]/gi, "_")}.png`;
@@ -232,6 +237,9 @@ function SavedCard({
     } catch (e) {
       console.error("Export failed", e);
     } finally {
+      if (el) {
+        for (const name of appliedVarNames) el.style.removeProperty(name);
+      }
       setDownloading(false);
     }
   }, [entry.name, downloading]);
