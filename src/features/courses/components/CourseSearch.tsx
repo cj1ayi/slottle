@@ -1,13 +1,19 @@
 "use client";
 
-import { AlertCircle, Loader2, RefreshCw, Search } from "lucide-react";
+import {
+  AlertCircle,
+  Loader2,
+  RefreshCw,
+  Search,
+  X,
+} from "lucide-react";
 import { useRef } from "react";
 import type { ApiCourse } from "@/lib/schema";
 import type { Course } from "@/types";
 import { CourseCard } from "./CourseCard";
+import { cn } from "@/lib/utils";
 
 type Props = {
-  // data
   allCourses: ApiCourse[];
   coursesLoading: boolean;
   coursesError: string;
@@ -18,7 +24,6 @@ type Props = {
   search: string;
   dropdownOpen: boolean;
   filtered: ApiCourse[];
-  // actions
   onAddCourse: (course: ApiCourse) => void;
   onRemoveCourse: (id: string) => void;
   onToggleSection: (courseId: string, sectionId: string) => void;
@@ -50,7 +55,6 @@ export function CourseSearch({
   onRepasteCookie,
 }: Props) {
   const searchRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isCookieError =
     coursesError.toLowerCase().includes("cookie") ||
@@ -58,80 +62,30 @@ export function CourseSearch({
     coursesError.toLowerCase().includes("401");
 
   return (
-    <section>
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold">Add courses</h2>
-        <span className="text-xs text-muted-foreground">
-          {coursesLoading
-            ? "Loading…"
-            : coursesError
-              ? "Error"
-              : `${allCourses.length} courses`}
-        </span>
-      </div>
-
-      {coursesError && (
-        <div className="mb-3 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm space-y-2">
-          <div className="flex items-start gap-2 text-destructive">
-            <AlertCircle className="size-4 shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <p className="font-medium">
-                {isCookieError
-                  ? "Your session has expired."
-                  : "Could not fetch courses."}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {isCookieError
-                  ? "Re-paste your Archers Hub cookie to continue."
-                  : "The Hub may be down or this term has no data yet."}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 pl-6">
-            {isCookieError ? (
-              <button
-                onClick={onRepasteCookie}
-                className="text-xs font-medium text-destructive underline underline-offset-2 hover:opacity-70 transition-opacity"
-              >
-                Re-paste cookie
-              </button>
-            ) : (
-              <>
-                <button
-                  onClick={onRetry}
-                  className="flex items-center gap-1 text-xs font-medium text-destructive underline underline-offset-2 hover:opacity-70 transition-opacity"
-                >
-                  <RefreshCw className="size-3" /> Retry
-                </button>
-                <button
-                  onClick={onRepasteCookie}
-                  className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
-                >
-                  Re-paste cookie instead
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="relative">
+    <div className="flex flex-col">
+      {/* ── Search input ─────────────────────────── */}
+      <div className="px-4 pb-3 relative">
         <div className="relative flex items-center">
           {coursesLoading || loadingCourseId ? (
-            <Loader2 className="absolute left-3 size-4 animate-spin text-muted-foreground" />
+            <Loader2 className="absolute left-3 size-3.5 animate-spin text-muted-foreground pointer-events-none" />
           ) : (
-            <Search className="absolute left-3 size-4 text-muted-foreground" />
+            <Search className="absolute left-3 size-3.5 text-muted-foreground pointer-events-none" />
           )}
           <input
             ref={searchRef}
             type="text"
-            className="w-full h-10 pl-9 pr-4 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+            className={cn(
+              "w-full h-9 pl-9 pr-8 rounded-sm bg-input text-sm text-foreground placeholder:text-muted-foreground/60",
+              "border-0 border-b-2 border-b-transparent focus:border-b-primary",
+              "focus:outline-none transition-colors",
+              coursesLoading && "opacity-50 pointer-events-none",
+            )}
             placeholder={
               coursesLoading
                 ? "Loading courses…"
                 : allCourses.length === 0
                   ? "No courses loaded"
-                  : `Search ${allCourses.length} courses…`
+                  : `CS 101, MATH 200…`
             }
             value={search}
             disabled={coursesLoading}
@@ -142,19 +96,24 @@ export function CourseSearch({
             onFocus={() => search && onDropdownChange(true)}
             onKeyDown={(e) => e.key === "Escape" && onDropdownChange(false)}
           />
+          {search && (
+            <button
+              className="absolute right-2.5 text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => { onSearchChange(""); onDropdownChange(false); }}
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
         </div>
 
+        {/* Dropdown */}
         {dropdownOpen && search.trim() && (
-          <div
-            ref={dropdownRef}
-            className="absolute z-10 mt-1 w-full rounded-lg border border-border bg-popover shadow-md max-h-64 overflow-y-auto"
-          >
+          <div className="absolute left-4 right-4 z-20 mt-1 rounded-sm border border-border/60 bg-popover shadow-[0_20px_40px_rgba(0,0,0,0.4)] max-h-56 overflow-y-auto">
             {filtered.length > 0 ? (
               filtered.slice(0, 12).map((c, i) => (
                 <button
-                  // Use compound key — API can return duplicate COURSE_CREATION_IDs
                   key={`${c.COURSE_CREATION_ID}-${i}`}
-                  className="w-full px-3 py-2.5 text-left text-sm hover:bg-muted transition-colors"
+                  className="w-full px-3 py-2 text-left text-xs hover:bg-accent transition-colors text-foreground"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => onAddCourse(c)}
                 >
@@ -162,7 +121,7 @@ export function CourseSearch({
                 </button>
               ))
             ) : (
-              <p className="px-3 py-2.5 text-sm text-muted-foreground">
+              <p className="px-3 py-2.5 text-xs text-muted-foreground">
                 No courses match &ldquo;{search}&rdquo;
               </p>
             )}
@@ -170,26 +129,83 @@ export function CourseSearch({
         )}
       </div>
 
+      {/* ── Error banner ─────────────────────────── */}
+      {coursesError && (
+        <div className="mx-4 mb-3 rounded-sm border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs space-y-1.5">
+          <div className="flex items-start gap-2 text-destructive">
+            <AlertCircle className="size-3.5 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold">
+                {isCookieError ? "Session expired." : "Could not fetch courses."}
+              </p>
+              <p className="text-muted-foreground text-[11px] mt-0.5">
+                {isCookieError
+                  ? "Re-paste your Archers Hub cookie."
+                  : "Hub may be down or this term has no data."}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3 pl-5">
+            {isCookieError ? (
+              <button
+                onClick={onRepasteCookie}
+                className="text-[11px] font-medium text-destructive underline underline-offset-2 hover:opacity-70 transition-opacity"
+              >
+                Re-paste cookie
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={onRetry}
+                  className="flex items-center gap-1 text-[11px] font-medium text-destructive underline underline-offset-2 hover:opacity-70 transition-opacity"
+                >
+                  <RefreshCw className="size-3" /> Retry
+                </button>
+                <button
+                  onClick={onRepasteCookie}
+                  className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+                >
+                  Re-paste cookie
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {courseAddError && (
-        <p className="mt-2 flex items-center gap-1.5 text-sm text-destructive">
+        <p className="mx-4 mb-2 flex items-center gap-1.5 text-xs text-destructive">
           <AlertCircle className="size-3.5 shrink-0" /> {courseAddError}
         </p>
       )}
 
+      {/* ── Course stack ─────────────────────────── */}
       {selectedCourses.length > 0 && (
-        <ul className="mt-3 space-y-2">
-          {selectedCourses.map((course) => (
-            <CourseCard
-              key={course.id}
-              course={course}
-              includedIds={includedSectionIds[course.id] ?? new Set()}
-              onRemove={() => onRemoveCourse(course.id)}
-              onToggleSection={(sid) => onToggleSection(course.id, sid)}
-              onToggleAll={(include) => onToggleAll(course.id, include)}
-            />
-          ))}
-        </ul>
+        <div className="px-4">
+          {/* Stack header */}
+          <div className="flex items-center justify-between mb-2 py-1">
+            <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-muted-foreground">
+              Current Stack
+            </span>
+            <span className="text-[10px] font-bold tracking-wide text-primary">
+              {selectedCourses.length} {selectedCourses.length === 1 ? "Course" : "Courses"}
+            </span>
+          </div>
+
+          <ul className="space-y-2">
+            {selectedCourses.map((course) => (
+              <CourseCard
+                key={course.id}
+                course={course}
+                includedIds={includedSectionIds[course.id] ?? new Set()}
+                onRemove={() => onRemoveCourse(course.id)}
+                onToggleSection={(sid) => onToggleSection(course.id, sid)}
+                onToggleAll={(include) => onToggleAll(course.id, include)}
+              />
+            ))}
+          </ul>
+        </div>
       )}
-    </section>
+    </div>
   );
 }

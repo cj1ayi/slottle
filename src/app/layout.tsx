@@ -1,30 +1,25 @@
 import type { Metadata } from "next";
-import { DM_Sans } from "next/font/google";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Outfit } from "next/font/google";
+import { Navbar } from "@/components/layout/Navbar";
 import "./globals.css";
 
-const dmSans = DM_Sans({
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["400", "500", "700"], 
-  variable: "--font-dm-sans",
+  variable: "--font-sans",
   display: "swap",
 });
 
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const outfit = Outfit({
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["900"],
+  variable: "--font-outfit",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Slottle - DLSU Schedule Generator",
+  title: "Slottle — Schedule Generator",
   description:
-    "Generate conflict-free class schedules from Archers Hub sections.",
+    "Precision Course Engineering. Build your perfect conflict-free class schedule.",
 };
 
 export default function RootLayout({
@@ -35,9 +30,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${dmSans.variable} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${outfit.variable} h-full dark`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col bg-background text-foreground antialiased">
+        <Navbar />
+        {children}
+      </body>
     </html>
   );
 }
