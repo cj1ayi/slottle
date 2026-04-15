@@ -32,6 +32,7 @@ import {
   NavBadge,
   NavRightIcons,
 } from "@/components/layout/NavPrimitives";
+import { isPECourse, getPESport } from "@/data/peSections";
 import type { ApiCourse } from "@/lib/schema";
 import type { Course, Section } from "@/types";
 
@@ -644,6 +645,9 @@ function SectionTableRow({
     section.capacity > 0
       ? Math.round((section.enlisted / section.capacity) * 100)
       : 0;
+  const sport = isPECourse(section.code)
+    ? getPESport(section.code, section.section)
+    : undefined;
 
   return (
     <button
@@ -669,9 +673,12 @@ function SectionTableRow({
         {included && <Check className="size-3 text-white stroke-[3]" />}
       </span>
 
-      <span className="text-sm font-bold text-foreground">
-        {section.section}
-      </span>
+      <div className="flex flex-col gap-0.5">
+        <span className="text-sm font-bold text-foreground">{section.section}</span>
+        {sport && (
+          <span className="text-[10px] font-semibold text-primary/70 truncate">{sport}</span>
+        )}
+      </div>
 
       <span className="text-sm text-muted-foreground truncate">
         {section.professor || "TBA"}

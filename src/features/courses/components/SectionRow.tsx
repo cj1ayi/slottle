@@ -4,6 +4,7 @@ import { Check } from "lucide-react";
 import { meetingSummary } from "@/lib/utils";
 import type { Section } from "@/types";
 import { cn } from "@/lib/utils";
+import { isPECourse, getPESport } from "@/data/peSections";
 
 type Props = {
   section: Section;
@@ -18,6 +19,7 @@ export function SectionRow({ section, included, onToggle, color }: Props) {
   const pct = section.capacity > 0
     ? Math.round((section.enlisted / section.capacity) * 100)
     : 0;
+  const sport = isPECourse(section.code) ? getPESport(section.code, section.section) : undefined;
 
   return (
     <button
@@ -52,6 +54,12 @@ export function SectionRow({ section, included, onToggle, color }: Props) {
             {section.professor || "TBA"}
           </span>
         </div>
+        {/* Sport badge — only shown for PE courses */}
+        {sport && (
+          <p className="text-[10px] font-semibold text-foreground/80 leading-tight truncate">
+            {sport}
+          </p>
+        )}
         {/* Row 2: schedule */}
         <p className="text-[10px] text-muted-foreground/70 leading-tight font-mono truncate">
           {meetingSummary(section.meetings)}
