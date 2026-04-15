@@ -2,17 +2,34 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, User } from "lucide-react";
+import { Moon, Settings, Sun, User } from "lucide-react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 export function Navbar() {
   const pathname = usePathname();
+  const [dark, setDark] = useState(true);
+
+  // Sync with saved preference on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("slottle-theme");
+    const isDark = saved !== "light";
+    setDark(isDark);
+    document.documentElement.classList.toggle("dark", isDark);
+  }, []);
+
+  function toggleTheme() {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("slottle-theme", next ? "dark" : "light");
+  }
 
   return (
-    <header className="h-[52px] flex items-center px-6 shrink-0 relative z-20 bg-background">
+    <header className="h-[52px] flex items-center px-6 shrink-0 z-20 bg-background border-b border-border">
       {/* Logo */}
       <span
-        className="font-[family-name:var(--font-outfit)] text-base font-black tracking-tight text-foreground"
+        className="font-[family-name:var(--font-outfit)] text-base font-black tracking-tight text-foreground select-none"
         style={{ letterSpacing: "-0.02em" }}
       >
         SLOTTLE
@@ -30,6 +47,9 @@ export function Navbar() {
 
       {/* Right side */}
       <div className="ml-auto flex items-center gap-1">
+        <IconBtn label={dark ? "Switch to light mode" : "Switch to dark mode"} onClick={toggleTheme}>
+          {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+        </IconBtn>
         <IconBtn label="Settings">
           <Settings className="size-4" />
         </IconBtn>
@@ -70,14 +90,17 @@ function NavLink({
 
 function IconBtn({
   label,
+  onClick,
   children,
 }: {
   label: string;
+  onClick?: () => void;
   children: React.ReactNode;
 }) {
   return (
     <button
       aria-label={label}
+      onClick={onClick}
       className="size-8 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
     >
       {children}

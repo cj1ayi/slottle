@@ -21,15 +21,13 @@ export function CookieSetup({ onSave }: { onSave: (cookie: string) => void }) {
     <div className="flex flex-1 flex-col items-center justify-center px-8 py-16">
       {/* Display heading */}
       <h1
-        className="font-[family-name:var(--font-outfit)] font-black text-[clamp(3rem,10vw,6rem)] leading-none tracking-tight text-foreground mb-4"
+        className="font-[family-name:var(--font-outfit)] font-black lowercase text-[clamp(3rem,10vw,6rem)] leading-none tracking-tight text-foreground mb-4"
         style={{ letterSpacing: "-0.03em" }}
       >
-        SLOTTLE
+        slottle
       </h1>
       <p className="text-muted-foreground text-sm text-center mb-10 leading-relaxed">
-        Precision Course Engineering.
-        <br />
-        Build your perfect schedule.
+        build your schedule with ease.
       </p>
 
       {/* Card */}

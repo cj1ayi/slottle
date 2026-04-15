@@ -26,47 +26,34 @@ export function CourseCard({
   const allOn = includedCount === course.sections.length;
 
   return (
-    <li className="rounded-sm overflow-hidden bg-card">
-      {/* Header */}
-      <div className="flex items-center gap-2.5 px-3 py-2.5">
-        {/* Color dot */}
-        <span
-          className="size-2 rounded-full shrink-0"
-          style={{ backgroundColor: course.color }}
-        />
-
-        {/* Course info */}
+    <li
+      className="overflow-hidden border border-border bg-card"
+      style={{ borderLeftWidth: 3, borderLeftColor: course.color }}
+    >
+      {/* ── Header — single compact row ──────────────────────────── */}
+      <div className="flex items-center gap-2 px-3 py-2.5 min-w-0">
+        {/* Titles: code on top, name truncated below */}
         <button
-          className="flex-1 min-w-0 text-left"
+          className="flex-1 min-w-0 text-left overflow-hidden"
           onClick={() => setOpen((o) => !o)}
         >
-          <p className="text-xs font-bold tracking-wide text-foreground truncate">
+          <p className="text-xs font-bold text-foreground truncate leading-snug">
             {course.code}
           </p>
-          <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+          <p className="text-[10px] text-muted-foreground truncate mt-px">
             {course.name}
           </p>
         </button>
 
-        {/* Section count + toggle */}
-        <button
-          className="flex items-center gap-1 text-[10px] font-semibold tracking-wide text-muted-foreground hover:text-foreground transition-colors shrink-0"
-          onClick={() => setOpen((o) => !o)}
-        >
-          <span className="uppercase">{course.sections.length} Sections</span>
-          {/* Availability dot */}
-          <span
-            className={cn(
-              "size-1.5 rounded-full ml-0.5",
-              includedCount > 0 ? "bg-[oklch(0.75_0.14_185)]" : "bg-muted-foreground/40",
-            )}
-          />
-        </button>
+        {/* Count badge */}
+        <span className="text-[10px] font-semibold text-muted-foreground shrink-0 tabular-nums">
+          {includedCount}/{course.sections.length}
+        </span>
 
-        {/* Chevron */}
+        {/* Expand */}
         <button
           onClick={() => setOpen((o) => !o)}
-          className="text-muted-foreground hover:text-foreground transition-colors"
+          className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
         >
           {open ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
         </button>
@@ -74,18 +61,17 @@ export function CourseCard({
         {/* Remove */}
         <button
           onClick={onRemove}
-          className="text-muted-foreground/60 hover:text-destructive transition-colors"
+          className="text-muted-foreground/40 hover:text-destructive transition-colors shrink-0"
         >
           <X className="size-3.5" />
         </button>
       </div>
 
-      {/* Sections list */}
+      {/* ── Section list ─────────────────────────────────────────── */}
       {open && (
-        <div className="border-t border-border/40">
-          {/* Select all row */}
-          <div className="flex items-center justify-between px-3 py-1.5 bg-background/30">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+        <div className="border-t border-border/50">
+          <div className="flex items-center justify-between px-3 py-1 bg-muted/40">
+            <span className="text-[10px] font-bold tracking-wide uppercase text-muted-foreground">
               Sections
             </span>
             <button
@@ -97,11 +83,11 @@ export function CourseCard({
           </div>
 
           {course.sections.length === 0 ? (
-            <p className="px-3 py-3 text-xs text-muted-foreground">
-              No sections found for this term.
+            <p className="px-3 py-3 text-xs text-muted-foreground text-center">
+              No sections for this term.
             </p>
           ) : (
-            <div className="max-h-48 overflow-y-auto">
+            <div>
               {course.sections.map((section) => (
                 <SectionRow
                   key={section.id}

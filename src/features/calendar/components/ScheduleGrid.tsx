@@ -20,36 +20,27 @@ const ROW_PX = 48; // px per 30-min slot
 function toMins(hhmm: number) {
   return Math.floor(hhmm / 100) * 60 + (hhmm % 100);
 }
-
-function topPx(time: number) {
-  return ((toMins(time) - toMins(GRID_START)) / 30) * ROW_PX;
+function topPx(t: number) {
+  return ((toMins(t) - toMins(GRID_START)) / 30) * ROW_PX;
 }
-
 function heightPx(start: number, end: number) {
   return ((toMins(end) - toMins(start)) / 30) * ROW_PX;
 }
-
-function formatTime(hhmm: number): string {
+function fmt(hhmm: number) {
   const h = Math.floor(hhmm / 100);
   const m = hhmm % 100;
-  const period = h >= 12 ? "PM" : "AM";
-  const display = h > 12 ? h - 12 : h === 0 ? 12 : h;
-  return `${display}:${String(m).padStart(2, "0")} ${period}`;
+  const ap = h >= 12 ? "PM" : "AM";
+  const dh = h > 12 ? h - 12 : h === 0 ? 12 : h;
+  return `${dh}:${String(m).padStart(2, "0")} ${ap}`;
 }
 
 const totalRows = (toMins(GRID_END) - toMins(GRID_START)) / 30;
-const gridHeightPx = totalRows * ROW_PX;
+const gridH = totalRows * ROW_PX;
 
-// Hour labels every 60 min
 const hourLabels: number[] = [];
-for (let t = GRID_START; t <= GRID_END; t += 100) {
-  hourLabels.push(t);
-}
+for (let t = GRID_START; t <= GRID_END; t += 100) hourLabels.push(t);
 
-type Props = {
-  schedule: Schedule;
-  courses: Course[];
-};
+type Props = { schedule: Schedule; courses: Course[] };
 
 export function ScheduleGrid({ schedule, courses }: Props) {
   const colorMap = new Map(courses.map((c) => [c.code, c.color]));
@@ -58,15 +49,14 @@ export function ScheduleGrid({ schedule, courses }: Props) {
     schedule.sections.some((s) => s.meetings.some((m) => m.day === day)),
   );
   const displayDays = activeDays.length > 0 ? activeDays : DAYS;
-
   const TIME_COL = "3.5rem";
 
   return (
     <div className="overflow-x-auto">
-      <div style={{ minWidth: 480 }}>
+      <div style={{ minWidth: 520 }}>
         {/* ── Day header ─────────────────────────────────────────── */}
         <div
-          className="grid"
+          className="grid border-b border-border"
           style={{
             gridTemplateColumns: `${TIME_COL} repeat(${displayDays.length}, 1fr)`,
           }}
@@ -75,19 +65,19 @@ export function ScheduleGrid({ schedule, courses }: Props) {
           {displayDays.map((day) => (
             <div
               key={day}
-              className="py-2.5 text-center text-[10px] font-bold tracking-[0.12em] uppercase text-muted-foreground"
+              className="py-2.5 text-center text-[10px] font-bold tracking-widest uppercase text-muted-foreground border-l border-border"
             >
               {DAY_LABELS[day]}
             </div>
           ))}
         </div>
 
-        {/* ── Grid body ──────────────────────────────────────────── */}
+        {/* ── Body ───────────────────────────────────────────────── */}
         <div
           className="grid"
           style={{
             gridTemplateColumns: `${TIME_COL} repeat(${displayDays.length}, 1fr)`,
-            height: gridHeightPx,
+            height: gridH,
           }}
         >
           {/* Time labels */}
@@ -95,41 +85,38 @@ export function ScheduleGrid({ schedule, courses }: Props) {
             {hourLabels.map((t) => (
               <div
                 key={t}
-                className="absolute right-2 text-[9px] font-mono text-muted-foreground/60 leading-none"
+                className="absolute right-2 text-[9px] font-mono text-muted-foreground/50 leading-none"
                 style={{ top: topPx(t) - 5 }}
               >
-                {formatTime(t)}
+                {fmt(t)}
               </div>
             ))}
           </div>
 
-          {/* Day columns — 4px gap between columns (no divider lines) */}
-          {displayDays.map((day, colIdx) => (
+          {/* Day columns */}
+          {displayDays.map((day) => (
             <div
               key={day}
-              className="relative"
-              style={{
-                height: gridHeightPx,
-                marginLeft: colIdx === 0 ? 0 : 4,
-              }}
+              className="relative border-l border-border"
+              style={{ height: gridH }}
             >
-              {/* Horizontal 30-min slot lines (very subtle) */}
+              {/* Slot lines */}
               {Array.from({ length: totalRows }, (_, i) => (
                 <div
                   key={i}
-                  className="absolute inset-x-0"
+                  className="absolute inset-x-0 border-t"
                   style={{
                     top: i * ROW_PX,
                     height: ROW_PX,
-                    borderTop:
+                    borderColor:
                       i % 2 === 0
-                        ? "1px solid oklch(0.91 0.025 245 / 5%)"
-                        : "1px dashed oklch(0.91 0.025 245 / 3%)",
+                        ? "color-mix(in oklch, var(--border) 70%, transparent)"
+                        : "color-mix(in oklch, var(--border) 30%, transparent)",
                   }}
                 />
               ))}
 
-              {/* Section blocks */}
+              {/* Blocks */}
               {schedule.sections.map((section) =>
                 section.meetings
                   .filter((m) => m.day === day)
@@ -144,7 +131,7 @@ export function ScheduleGrid({ schedule, courses }: Props) {
                         style={{
                           top,
                           height,
-                          backgroundColor: `${color}22`,
+                          backgroundColor: `${color}28`,
                           borderLeft: `3px solid ${color}`,
                         }}
                       >
@@ -152,19 +139,22 @@ export function ScheduleGrid({ schedule, courses }: Props) {
                           className="text-[11px] font-bold leading-tight truncate"
                           style={{ color }}
                         >
-                          {section.code} · {section.section}
+                          {section.code}
                         </p>
-                        {height >= 56 && (
+                        <p
+                          className="text-[10px] leading-tight truncate"
+                          style={{ color: `${color}bb` }}
+                        >
+                          {section.section}
+                        </p>
+                        {height >= 64 && (
                           <p
                             className="text-[10px] leading-tight truncate mt-0.5"
-                            style={{ color: `${color}cc` }}
+                            style={{ color: `${color}88` }}
                           >
                             {section.professor || "TBA"}
                           </p>
                         )}
-                        <p className="text-[9px] font-mono text-muted-foreground/60 mt-0.5 leading-tight truncate">
-                          {formatTime(meeting.start)}
-                        </p>
                       </div>
                     );
                   }),

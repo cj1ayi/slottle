@@ -15,51 +15,61 @@ type Props = {
 export function SectionRow({ section, included, onToggle, color }: Props) {
   const slots = section.capacity - section.enlisted;
   const full = slots <= 0;
+  const pct = section.capacity > 0
+    ? Math.round((section.enlisted / section.capacity) * 100)
+    : 0;
 
   return (
     <button
       onClick={onToggle}
       className={cn(
-        "w-full flex items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-accent/60",
-        !included && "opacity-40",
+        "w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors border-t border-border/30",
+        "hover:bg-accent/50",
+        !included && "opacity-45",
       )}
     >
-      {/* Checkbox */}
+      {/* Checkbox — slightly larger than default, clearly readable */}
       <span
         className={cn(
-          "mt-0.5 size-3.5 rounded-sm border flex items-center justify-center shrink-0 transition-colors",
-          included ? "border-transparent" : "border-border bg-input",
+          "size-5 rounded flex items-center justify-center shrink-0 transition-all border-2",
+          included
+            ? "border-transparent"
+            : "border-muted-foreground/40 bg-background dark:bg-input",
         )}
-        style={included ? { backgroundColor: color } : {}}
+        style={included ? { backgroundColor: color, borderColor: color } : {}}
       >
-        {included && <Check className="size-2 text-white" />}
+        {included && <Check className="size-3 text-white stroke-[3]" />}
       </span>
 
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-1.5 flex-wrap">
-          <span className="text-xs font-semibold text-foreground">
+      {/* Main info block */}
+      <div className="flex-1 min-w-0 space-y-0.5">
+        {/* Row 1: section code + professor */}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-xs font-bold text-foreground shrink-0">
             {section.section}
           </span>
-          <span className="text-[10px] text-muted-foreground truncate">
+          <span className="text-xs text-muted-foreground truncate">
             {section.professor || "TBA"}
           </span>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
+        {/* Row 2: schedule */}
+        <p className="text-[10px] text-muted-foreground/70 leading-tight font-mono truncate">
           {meetingSummary(section.meetings)}
         </p>
       </div>
 
-      {/* Slots chip */}
+      {/* Capacity pill — right aligned, compact */}
       <span
         className={cn(
-          "text-[10px] shrink-0 mt-0.5 font-semibold px-1.5 py-0.5 rounded-sm",
+          "shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded",
           full
-            ? "bg-destructive/15 text-destructive"
-            : "bg-[oklch(0.25_0.06_185)] text-[oklch(0.75_0.14_185)]",
+            ? "bg-destructive/15 text-destructive dark:bg-destructive/20"
+            : pct >= 80
+              ? "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400"
+              : "bg-[var(--tertiary-bg)] text-[var(--tertiary)]",
         )}
       >
-        {full ? "FULL" : `${slots}`}
+        {full ? "Full" : `${slots}`}
       </span>
     </button>
   );

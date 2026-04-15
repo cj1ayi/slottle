@@ -18,11 +18,6 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -42,106 +37,97 @@
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* ─── Slottle Design System — always dark ─────────────────────── */
+/* ─── Light theme (default) ──────────────────────────────────────── */
 :root {
   font-family: var(--font-sans), sans-serif;
 
-  /* Celestial Navy base */
-  --background: oklch(0.126 0.040 265);        /* #0b1326 */
-  --foreground: oklch(0.91 0.025 245);
+  --background: oklch(0.97 0.006 255);
+  --foreground: oklch(0.18 0.025 265);
 
-  /* Surface hierarchy */
-  --card: oklch(0.195 0.046 265);              /* surface-container-high */
-  --card-foreground: oklch(0.91 0.025 245);
-  --popover: oklch(0.245 0.052 265);           /* surface-container-highest */
-  --popover-foreground: oklch(0.91 0.025 245);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.025 265);
 
-  /* Violet primary */
-  --primary: oklch(0.802 0.107 293);           /* #d0bcff */
-  --primary-foreground: oklch(0.152 0.055 293);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.025 265);
 
-  /* Secondary = surface-container-low */
-  --secondary: oklch(0.152 0.042 265);
-  --secondary-foreground: oklch(0.91 0.025 245);
+  --primary: oklch(0.55 0.18 293);
+  --primary-foreground: oklch(0.98 0.01 293);
 
-  /* Muted */
-  --muted: oklch(0.195 0.046 265);
-  --muted-foreground: oklch(0.60 0.038 245);
+  --secondary: oklch(0.93 0.01 255);
+  --secondary-foreground: oklch(0.18 0.025 265);
 
-  /* Accent = surface-container-highest */
-  --accent: oklch(0.245 0.052 265);
-  --accent-foreground: oklch(0.91 0.025 245);
+  --muted: oklch(0.93 0.01 255);
+  --muted-foreground: oklch(0.50 0.025 255);
 
-  /* Destructive */
-  --destructive: oklch(0.65 0.20 22);
+  --accent: oklch(0.90 0.015 265);
+  --accent-foreground: oklch(0.18 0.025 265);
+
+  --destructive: oklch(0.60 0.22 22);
   --destructive-foreground: oklch(0.98 0 0);
 
-  /* No-line rule: borders are barely visible tonal shifts */
-  --border: oklch(0.91 0.025 245 / 8%);
-  --input: oklch(0.245 0.052 265);
-  --ring: oklch(0.802 0.107 293 / 50%);
+  --border: oklch(0.85 0.01 255);
+  --input: oklch(0.92 0.01 255);
+  --ring: oklch(0.55 0.18 293 / 40%);
 
-  /* Tight sm radius for "tool" feel */
-  --radius: 0.25rem;
+  --radius: 0.375rem;
 
-  /* Sidebar = surface-container-low */
-  --sidebar: oklch(0.152 0.042 265);
-  --sidebar-foreground: oklch(0.91 0.025 245);
-  --sidebar-primary: oklch(0.802 0.107 293);
-  --sidebar-primary-foreground: oklch(0.152 0.055 293);
-  --sidebar-accent: oklch(0.195 0.046 265);
-  --sidebar-accent-foreground: oklch(0.91 0.025 245);
-  --sidebar-border: oklch(0.91 0.025 245 / 8%);
-  --sidebar-ring: oklch(0.802 0.107 293 / 50%);
+  --sidebar: oklch(0.92 0.012 258);
+  --sidebar-foreground: oklch(0.18 0.025 265);
+  --sidebar-primary: oklch(0.55 0.18 293);
+  --sidebar-primary-foreground: oklch(0.98 0.01 293);
+  --sidebar-accent: oklch(0.86 0.015 258);
+  --sidebar-accent-foreground: oklch(0.18 0.025 265);
+  --sidebar-border: oklch(0.82 0.012 258);
+  --sidebar-ring: oklch(0.55 0.18 293 / 40%);
 
-  /* Tertiary / seafoam — success / optimal */
-  --tertiary: oklch(0.75 0.14 185);
-  --tertiary-container: oklch(0.25 0.06 185);
-  --on-tertiary: oklch(0.13 0.04 185);
-
-  /* Chart colors (teal + violet spectrum) */
-  --chart-1: oklch(0.75 0.14 185);
-  --chart-2: oklch(0.802 0.107 293);
-  --chart-3: oklch(0.65 0.12 145);
-  --chart-4: oklch(0.70 0.14 60);
-  --chart-5: oklch(0.65 0.18 350);
+  /* Tertiary / success (seafoam) */
+  --tertiary: oklch(0.55 0.14 162);
+  --tertiary-bg: oklch(0.92 0.05 162);
 }
 
-/* Dark class mirrors root (app is always dark, .dark added to <html>) */
+/* ─── Dark theme ─────────────────────────────────────────────────── */
 .dark {
   --background: oklch(0.126 0.040 265);
   --foreground: oklch(0.91 0.025 245);
+
   --card: oklch(0.195 0.046 265);
   --card-foreground: oklch(0.91 0.025 245);
+
   --popover: oklch(0.245 0.052 265);
   --popover-foreground: oklch(0.91 0.025 245);
+
   --primary: oklch(0.802 0.107 293);
   --primary-foreground: oklch(0.152 0.055 293);
+
   --secondary: oklch(0.152 0.042 265);
   --secondary-foreground: oklch(0.91 0.025 245);
+
   --muted: oklch(0.195 0.046 265);
   --muted-foreground: oklch(0.60 0.038 245);
+
   --accent: oklch(0.245 0.052 265);
   --accent-foreground: oklch(0.91 0.025 245);
+
   --destructive: oklch(0.65 0.20 22);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.91 0.025 245 / 8%);
+
+  --border: oklch(0.91 0.025 245 / 10%);
   --input: oklch(0.245 0.052 265);
   --ring: oklch(0.802 0.107 293 / 50%);
+
   --sidebar: oklch(0.152 0.042 265);
   --sidebar-foreground: oklch(0.91 0.025 245);
   --sidebar-primary: oklch(0.802 0.107 293);
   --sidebar-primary-foreground: oklch(0.152 0.055 293);
   --sidebar-accent: oklch(0.195 0.046 265);
   --sidebar-accent-foreground: oklch(0.91 0.025 245);
-  --sidebar-border: oklch(0.91 0.025 245 / 8%);
+  --sidebar-border: oklch(0.91 0.025 245 / 10%);
   --sidebar-ring: oklch(0.802 0.107 293 / 50%);
+
+  --tertiary: oklch(0.75 0.14 162);
+  --tertiary-bg: oklch(0.22 0.06 162);
 }
 
 @layer base {
@@ -153,13 +139,11 @@
   }
 }
 
-/* ─── Utility: primary gradient (CTA "machined" sheen) ─────────── */
+/* ─── CTA gradient ───────────────────────────────────────────────── */
 .btn-primary-gradient {
-  background: linear-gradient(45deg, oklch(0.802 0.107 293), oklch(0.68 0.12 293));
-}
-
-/* ─── Ghost border fallback for high-density areas ─────────────── */
-.ghost-border {
-  outline: 1px solid oklch(0.91 0.025 245 / 15%);
-  outline-offset: -1px;
+  background: linear-gradient(
+    45deg,
+    var(--primary),
+    oklch(from var(--primary) calc(l - 0.08) c h)
+  );
 }
