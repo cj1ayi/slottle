@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { Course, Schedule } from "@/types";
 import { generateSchedules, MAX_PRODUCT, MAX_RESULTS } from "../utils/generator";
 
@@ -27,10 +27,10 @@ export function useScheduler(): UseScheduler {
   const [generateError, setGenerateError] = useState("");
   const [truncated, setTruncated] = useState(false);
 
-  function generate(
+  const generate = useCallback((
     selectedCourses: Course[],
     includedSectionIds: Record<string, Set<string>>,
-  ) {
+  ) => {
     const coursesForGen = selectedCourses
       .map((c) => ({
         ...c,
@@ -65,14 +65,14 @@ export function useScheduler(): UseScheduler {
       setActiveIndex(0);
       setGenerating(false);
     }, 0);
-  }
+  }, []);
 
-  function clearSchedules() {
+  const clearSchedules = useCallback(() => {
     setSchedules([]);
     setActiveIndex(0);
     setGenerateError("");
     setTruncated(false);
-  }
+  }, []);
 
   return {
     schedules,
