@@ -1,82 +1,97 @@
-"use client"
+"use client";
 
-import { useEffect, useRef, useState } from "react"
-import { Loader2 } from "lucide-react"
-import { useStore } from "@/store"
-import { CookieSetup } from "@/features/auth/components/CookieSetup"
-import { CourseSearch } from "@/features/courses/components/CourseSearch"
-import { useCourses } from "@/features/courses/hooks/useCourses"
-import { ScheduleViewer } from "@/features/scheduler/components/ScheduleViewer"
-import { useScheduler } from "@/features/scheduler/hooks/useScheduler"
-import { SavedList } from "@/features/saved/components/SavedList"
-import { useSaved } from "@/features/saved/hooks/useSaved"
+import { useEffect, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { Outfit } from "next/font/google";
+import { useStore } from "@/store";
+import { CookieSetup } from "@/features/auth/components/CookieSetup";
+import { CourseSearch } from "@/features/courses/components/CourseSearch";
+import { useCourses } from "@/features/courses/hooks/useCourses";
+import { ScheduleViewer } from "@/features/scheduler/components/ScheduleViewer";
+import { useScheduler } from "@/features/scheduler/hooks/useScheduler";
+import { SavedList } from "@/features/saved/components/SavedList";
+import { useSaved } from "@/features/saved/hooks/useSaved";
 
 const SESSIONS = [
   { id: "135", label: "AY 2025-2026 Term 3" },
-  { id: "4",   label: "AY 2025-2026 Term 2" },
-]
+  { id: "4", label: "AY 2025-2026 Term 2" },
+];
+
+const outfitLogo = Outfit({
+  subsets: ["latin"],
+  weight: ["900"],
+  display: "swap",
+});
 
 export default function Home() {
-  const cookie = useStore((s) => s.cookie)
-  const setCookie = useStore((s) => s.setCookie)
-  const clearCookie = useStore((s) => s.clearCookie)
+  const cookie = useStore((s) => s.cookie);
+  const setCookie = useStore((s) => s.setCookie);
+  const clearCookie = useStore((s) => s.clearCookie);
 
-  const [hydrated, setHydrated] = useState(false)
-  const [sessionId, setSessionId] = useState("135")
+  const [hydrated, setHydrated] = useState(false);
+  const [sessionId, setSessionId] = useState("135");
 
-  const courses = useCourses()
-  const scheduler = useScheduler()
-  const saved = useSaved()
+  const courses = useCourses();
+  const scheduler = useScheduler();
+  const saved = useSaved();
 
-  const lastFetchedCookie = useRef("")
+  const lastFetchedCookie = useRef("");
 
   // Hydrate store
   useEffect(() => {
-    const result = useStore.persist.rehydrate()
-    Promise.resolve(result).then(() => setHydrated(true))
-  }, [])
+    const result = useStore.persist.rehydrate();
+    Promise.resolve(result).then(() => setHydrated(true));
+  }, []);
 
   // Auto-fetch courses when cookie changes
   useEffect(() => {
-    if (!hydrated || !cookie || lastFetchedCookie.current === cookie) return
-    lastFetchedCookie.current = cookie
-    courses.loadCourses(cookie, sessionId)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: loadCourses is stable via useCallback, intentionally only re-fetch on cookie change
-  }, [hydrated, cookie])
+    if (!hydrated || !cookie || lastFetchedCookie.current === cookie) return;
+    lastFetchedCookie.current = cookie;
+    courses.loadCourses(cookie, sessionId);
+    // biome-ignore lint/correctness/useExhaustiveDependencies: loadCourses is stable via useCallback, intentionally only re-fetch on cookie change
+  }, [hydrated, cookie]);
 
   if (!hydrated) {
     return (
       <div className="flex flex-1 items-center justify-center">
         <Loader2 className="size-5 animate-spin text-muted-foreground" />
       </div>
-    )
+    );
   }
-  if (!cookie) return <CookieSetup onSave={setCookie} />
+  if (!cookie) return <CookieSetup onSave={setCookie} />;
 
   function selectSession(sid: string) {
-    setSessionId(sid)
-    courses.loadCourses(cookie, sid)
+    setSessionId(sid);
+    courses.loadCourses(cookie, sid);
   }
 
   function handleRepasteCookie() {
-    clearCookie()
-    lastFetchedCookie.current = ""
-    scheduler.clearSchedules()
+    clearCookie();
+    lastFetchedCookie.current = "";
+    scheduler.clearSchedules();
   }
 
   const canGenerate =
     courses.selectedCourses.length > 0 &&
     !courses.loadingCourseId &&
     !scheduler.generating &&
-    courses.selectedCourses.some((c) => (courses.includedSectionIds[c.id]?.size ?? 0) > 0)
+    courses.selectedCourses.some(
+      (c) => (courses.includedSectionIds[c.id]?.size ?? 0) > 0,
+    );
 
   return (
     <div className="flex flex-1 flex-col min-h-0">
       {/* Header */}
       <header className="border-b border-border px-6 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-lg tracking-tight">Slottle</span>
-          <span className="text-muted-foreground text-sm hidden sm:block">— DLSU schedule generator</span>
+          <span
+            className={`${outfitLogo.className} text-lg font-black tracking-tight lowercase`}
+          >
+            Slottle
+          </span>
+          <span className="text-muted-foreground text-sm hidden sm:block">
+            — DLSU schedule generator
+          </span>
         </div>
         <button
           onClick={handleRepasteCookie}
@@ -87,7 +102,6 @@ export default function Home() {
       </header>
 
       <div className="flex flex-1 min-h-0 overflow-y-auto flex-col gap-6 p-6 max-w-5xl mx-auto w-full">
-
         {/* Term picker */}
         <section>
           <h2 className="text-sm font-semibold mb-2">Academic term</h2>
@@ -121,9 +135,15 @@ export default function Home() {
           dropdownOpen={courses.dropdownOpen}
           filtered={courses.filtered}
           onAddCourse={(c) => courses.addCourse(c, cookie, sessionId)}
-          onRemoveCourse={(id) => courses.removeCourse(id, scheduler.clearSchedules)}
-          onToggleSection={(cid, sid) => courses.toggleSection(cid, sid, scheduler.clearSchedules)}
-          onToggleAll={(cid, include) => courses.toggleAllSections(cid, include, scheduler.clearSchedules)}
+          onRemoveCourse={(id) =>
+            courses.removeCourse(id, scheduler.clearSchedules)
+          }
+          onToggleSection={(cid, sid) =>
+            courses.toggleSection(cid, sid, scheduler.clearSchedules)
+          }
+          onToggleAll={(cid, include) =>
+            courses.toggleAllSections(cid, include, scheduler.clearSchedules)
+          }
           onSearchChange={courses.setSearch}
           onDropdownChange={courses.setDropdownOpen}
           onRetry={() => courses.loadCourses(cookie, sessionId)}
@@ -139,10 +159,29 @@ export default function Home() {
           truncated={scheduler.truncated}
           canGenerate={canGenerate}
           selectedCourses={courses.selectedCourses}
-          onGenerate={() => scheduler.generate(courses.selectedCourses, courses.includedSectionIds)}
-          onSave={() => saved.saveCurrentSchedule(scheduler.schedules[scheduler.activeIndex], courses.selectedCourses)}
-          onPrev={() => scheduler.setActiveIndex(Math.max(0, scheduler.activeIndex - 1))}
-          onNext={() => scheduler.setActiveIndex(Math.min(scheduler.schedules.length - 1, scheduler.activeIndex + 1))}
+          onGenerate={() =>
+            scheduler.generate(
+              courses.selectedCourses,
+              courses.includedSectionIds,
+            )
+          }
+          onSave={() =>
+            saved.saveCurrentSchedule(
+              scheduler.schedules[scheduler.activeIndex],
+              courses.selectedCourses,
+            )
+          }
+          onPrev={() =>
+            scheduler.setActiveIndex(Math.max(0, scheduler.activeIndex - 1))
+          }
+          onNext={() =>
+            scheduler.setActiveIndex(
+              Math.min(
+                scheduler.schedules.length - 1,
+                scheduler.activeIndex + 1,
+              ),
+            )
+          }
         />
 
         {/* Saved schedules */}
@@ -151,8 +190,7 @@ export default function Home() {
           onRename={saved.renameSaved}
           onRemove={saved.removeSaved}
         />
-
       </div>
     </div>
-  )
+  );
 }

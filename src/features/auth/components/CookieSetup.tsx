@@ -1,9 +1,16 @@
 "use client";
 
 import { AlertCircle } from "lucide-react";
+import { Outfit } from "next/font/google";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+
+const outfitLogo = Outfit({
+  subsets: ["latin"],
+  weight: ["900"],
+  display: "swap",
+});
 
 export function CookieSetup({ onSave }: { onSave: (cookie: string) => void }) {
   const [value, setValue] = useState("");
@@ -21,7 +28,11 @@ export function CookieSetup({ onSave }: { onSave: (cookie: string) => void }) {
   return (
     <div className="flex flex-1 items-center justify-center px-4 py-16">
       <div className="w-full max-w-lg">
-        <h1 className="text-3xl font-bold tracking-tight mb-1">Slottle</h1>
+        <h1
+          className={`${outfitLogo.className} mb-1 text-3xl font-black tracking-tight lowercase`}
+        >
+          Slottle
+        </h1>
         <p className="text-muted-foreground mb-8">
           Schedule generator for DLSU Archers Hub
         </p>
