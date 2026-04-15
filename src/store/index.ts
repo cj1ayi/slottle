@@ -21,6 +21,12 @@ export const useStore = create<GlobalStore>()(
         setItem: async (key, value) => await set(key, value),
         removeItem: async (key) => await del(key),
       })),
+      partialize: (state) => {
+        // Exclude transient scheduler state from IDB — it survives navigation
+        // in-memory but resets on page reload (expected behaviour).
+        const { generated, activeScheduleIndex, ...persisted } = state;
+        return persisted;
+      },
       skipHydration: true,
     },
   ),

@@ -23,7 +23,7 @@ import { useCourses } from "@/features/courses/hooks/useCourses";
 import { useScheduler } from "@/features/scheduler/hooks/useScheduler";
 import { useSaved } from "@/features/saved/hooks/useSaved";
 import { ScheduleGrid } from "@/features/calendar/components/ScheduleGrid";
-import { meetingSummary } from "@/lib/utils";
+import { meetingSummary, groupMeetings, fmtTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import {
   NavLogo,
@@ -47,8 +47,9 @@ export default function Home() {
   const cookie = useStore((s) => s.cookie);
   const setCookie = useStore((s) => s.setCookie);
   const clearCookie = useStore((s) => s.clearCookie);
+  const clearCourses = useStore((s) => s.clearCourses);
 
-  const [hydrated, setHydrated] = useState(false);
+  const [hydrated, setHydrated] = useState(() => useStore.persist.hasHydrated());
   const [sessionId, setSessionId] = useState("135");
   const [tab, setTab] = useState<Tab>("courses");
   const [activeCourseId, setActiveCourseId] = useState<string | null>(null);
@@ -59,8 +60,13 @@ export default function Home() {
   const lastFetchedCookie = useRef("");
 
   useEffect(() => {
-    const result = useStore.persist.rehydrate();
-    Promise.resolve(result).then(() => setHydrated(true));
+    if (useStore.persist.hasHydrated()) {
+      setHydrated(true);
+      return;
+    }
+    const unsub = useStore.persist.onFinishHydration(() => setHydrated(true));
+    useStore.persist.rehydrate();
+    return unsub;
   }, []);
 
   useEffect(() => {
@@ -100,11 +106,14 @@ export default function Home() {
 
   function selectSession(sid: string) {
     setSessionId(sid);
+    clearCourses();
+    scheduler.clearSchedules();
     courses.loadCourses(cookie, sid);
   }
 
   function handleRepasteCookie() {
     clearCookie();
+    clearCourses();
     lastFetchedCookie.current = "";
     scheduler.clearSchedules();
   }
@@ -597,11 +606,13 @@ function SectionTable({
       </div>
 
       {/* Column headers */}
-      <div className="shrink-0 grid grid-cols-[2.5rem_7rem_1fr_1fr_6rem] gap-x-4 px-5 py-2 border-b border-border bg-muted/30 text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+      <div className="shrink-0 grid grid-cols-[2.5rem_7rem_1fr_1fr_1fr_1fr_6rem] gap-x-4 px-5 py-2 border-b border-border bg-muted/30 text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
         <div />
         <div>Section</div>
         <div>Professor</div>
         <div>Schedule</div>
+        <div>Room</div>
+        <div>Days</div>
         <div className="text-right">Capacity</div>
       </div>
 
@@ -649,12 +660,14 @@ function SectionTableRow({
     ? getPESport(section.code, section.section)
     : undefined;
 
+  const groups = groupMeetings(section.meetings);
+
   return (
     <button
       type="button"
       onClick={onToggle}
       className={cn(
-        "w-full grid grid-cols-[2.5rem_7rem_1fr_1fr_6rem] gap-x-4 items-center px-5 py-3",
+        "w-full grid grid-cols-[2.5rem_7rem_1fr_1fr_1fr_1fr_6rem] gap-x-4 items-start px-5 py-3",
         "border-b border-border/40 text-left transition-colors group",
         included
           ? "bg-background hover:bg-accent/40"
@@ -663,7 +676,7 @@ function SectionTableRow({
     >
       <span
         className={cn(
-          "size-5 rounded flex items-center justify-center border-2 transition-all shrink-0",
+          "size-5 rounded flex items-center justify-center border-2 transition-all shrink-0 mt-0.5",
           included
             ? "border-transparent"
             : "border-border group-hover:border-muted-foreground/60",
@@ -684,9 +697,26 @@ function SectionTableRow({
         {section.professor || "TBA"}
       </span>
 
-      <span className="text-xs text-muted-foreground font-mono leading-relaxed">
-        {meetingSummary(section.meetings)}
-      </span>
+      {/* Schedule — time only, one line per group */}
+      <div className="text-xs text-muted-foreground font-mono">
+        {groups.length === 0 ? <span>TBA</span> : groups.map((g, i) => (
+          <div key={i} className="leading-snug whitespace-nowrap">{fmtTime(g.start)}–{fmtTime(g.end)}</div>
+        ))}
+      </div>
+
+      {/* Room */}
+      <div className="text-xs text-muted-foreground">
+        {groups.length === 0 ? <span>—</span> : groups.map((g, i) => (
+          <div key={i} className="leading-snug">{g.room || <span className="opacity-30">—</span>}</div>
+        ))}
+      </div>
+
+      {/* Days — DLSU codes e.g. M/H, T/F */}
+      <div className="text-xs font-semibold text-foreground">
+        {groups.length === 0 ? <span className="text-muted-foreground">—</span> : groups.map((g, i) => (
+          <div key={i} className="leading-snug">{g.days}</div>
+        ))}
+      </div>
 
       <div className="flex justify-end">
         <span
@@ -821,7 +851,7 @@ function SchedulesTab({
             const course = selectedCourses.find((c) => c.code === s.code);
             return (
               <div
-                key={s.id}
+                key={`${s.id}-${s.code}`}
                 className="flex items-center gap-2 text-xs text-muted-foreground"
               >
                 <span

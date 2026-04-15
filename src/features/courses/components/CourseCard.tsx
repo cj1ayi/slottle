@@ -67,37 +67,54 @@ export function CourseCard({
         </button>
       </div>
 
-      {/* ── Section list ─────────────────────────────────────────── */}
+      {/* ── Section table ─────────────────────────────────────────── */}
       {open && (
-        <div className="border-t border-border/50">
-          <div className="flex items-center justify-between px-3 py-1 bg-muted/40">
-            <span className="text-[10px] font-bold tracking-wide uppercase text-muted-foreground">
-              Sections
-            </span>
-            <button
-              onClick={() => onToggleAll(!allOn)}
-              className="text-[10px] font-semibold text-primary hover:opacity-70 transition-opacity"
-            >
-              {allOn ? "Deselect all" : "Select all"}
-            </button>
-          </div>
-
+        <div className="border-t border-border/50 overflow-x-auto">
           {course.sections.length === 0 ? (
             <p className="px-3 py-3 text-xs text-muted-foreground text-center">
               No sections for this term.
             </p>
           ) : (
-            <div>
-              {course.sections.map((section) => (
-                <SectionRow
-                  key={section.id}
-                  section={section}
-                  included={includedIds.has(section.id)}
-                  onToggle={() => onToggleSection(section.id)}
-                  color={course.color}
-                />
-              ))}
-            </div>
+            <table className="w-full">
+              <thead>
+                <tr className="bg-muted/40">
+                  <th className="pl-3 pr-2 py-1.5 text-left text-[10px] font-bold tracking-wide uppercase text-muted-foreground">
+                    Section
+                  </th>
+                  <th className="px-2 py-1.5 text-left text-[10px] font-bold tracking-wide uppercase text-muted-foreground">
+                    Professor
+                  </th>
+                  <th className="px-2 py-1.5 text-left text-[10px] font-bold tracking-wide uppercase text-muted-foreground">
+                    Schedule
+                  </th>
+                  <th className="px-2 py-1.5 text-left text-[10px] font-bold tracking-wide uppercase text-muted-foreground">
+                    Room
+                  </th>
+                  <th className="px-2 py-1.5 text-left text-[10px] font-bold tracking-wide uppercase text-muted-foreground">
+                    Days
+                  </th>
+                  <th className="pr-3 pl-2 py-1.5 text-right text-[10px] font-bold tracking-wide uppercase text-muted-foreground">
+                    <button
+                      onClick={() => onToggleAll(!allOn)}
+                      className="font-semibold text-primary hover:opacity-70 transition-opacity normal-case tracking-normal"
+                    >
+                      {allOn ? "Deselect all" : "Select all"}
+                    </button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {course.sections.map((section) => (
+                  <SectionRow
+                    key={section.id}
+                    section={section}
+                    included={includedIds.has(section.id)}
+                    onToggle={() => onToggleSection(section.id)}
+                    color={course.color}
+                  />
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       )}

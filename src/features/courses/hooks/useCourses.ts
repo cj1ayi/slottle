@@ -1,10 +1,10 @@
 "use client"
 
-import { useCallback, useState } from "react"
-import { buildCourse } from "@/lib/parser"
+import { useCallback, useMemo, useState } from "react"
+import { buildCourse, applyRoomData } from "@/lib/parser"
 import { courseService } from "../services/courseService"
+import { useStore } from "@/store"
 import type { ApiCourse } from "@/lib/schema"
-import type { Course } from "@/types"
 
 type UseCourses = {
   // state
@@ -12,7 +12,7 @@ type UseCourses = {
   coursesLoading: boolean
   coursesError: string
   courseAddError: string
-  selectedCourses: Course[]
+  selectedCourses: ReturnType<typeof useStore.getState>["courses"]
   loadingCourseId: string | null
   includedSectionIds: Record<string, Set<string>>
   search: string
@@ -31,30 +31,48 @@ type UseCourses = {
 }
 
 export function useCourses(): UseCourses {
+  // ── Zustand (survives navigation) ─────────────────────────────
+  const selectedCourses = useStore((s) => s.courses)
+  const storedIncluded = useStore((s) => s.includedSectionIds)
+  const storeAddCourse = useStore((s) => s.addCourse)
+  const storeRemoveCourse = useStore((s) => s.removeCourse)
+  const storeClearCourses = useStore((s) => s.clearCourses)
+  const storeSetIncluded = useStore((s) => s.setIncludedSectionIds)
+
+  // Convert stored string[] back to Set<string> for component usage
+  const includedSectionIds = useMemo<Record<string, Set<string>>>(
+    () =>
+      Object.fromEntries(
+        Object.entries(storedIncluded).map(([k, v]) => [k, new Set(v)]),
+      ),
+    [storedIncluded],
+  )
+
+  // ── Local state (transient — OK to lose on navigation) ────────
   const [allCourses, setAllCourses] = useState<ApiCourse[]>([])
   const [coursesLoading, setCoursesLoading] = useState(false)
   const [coursesError, setCoursesError] = useState("")
   const [courseAddError, setCourseAddError] = useState("")
-  const [selectedCourses, setSelectedCourses] = useState<Course[]>([])
   const [loadingCourseId, setLoadingCourseId] = useState<string | null>(null)
-  const [includedSectionIds, setIncludedSectionIds] = useState<Record<string, Set<string>>>({})
   const [search, setSearch] = useState("")
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
-  const selectedIds = new Set(selectedCourses.map((c) => c.id))
+  const selectedIds = useMemo(
+    () => new Set(selectedCourses.map((c) => c.id)),
+    [selectedCourses],
+  )
 
   const filtered = search.trim()
     ? allCourses.filter(
         (c) =>
           !selectedIds.has(String(c.COURSE_CREATION_ID)) &&
-          c.COURSE_NAME.toLowerCase().includes(search.toLowerCase())
+          c.COURSE_NAME.toLowerCase().includes(search.toLowerCase()),
       )
     : []
 
+  // Fetch available course catalog for this term — does NOT clear selected courses
   const loadCourses = useCallback((cookie: string, sessionId: string) => {
     setAllCourses([])
-    setSelectedCourses([])
-    setIncludedSectionIds({})
     setCoursesLoading(true)
     setCoursesError("")
     courseService
@@ -72,45 +90,51 @@ export function useCourses(): UseCourses {
     setCourseAddError("")
     try {
       const sections = await courseService.getSections(cookie, sessionId, courseId)
-      const course = buildCourse(apiCourse, sections, selectedCourses.length)
-      setSelectedCourses((prev) => [...prev, course])
+      let course = buildCourse(apiCourse, sections, selectedCourses.length)
+
+      const roomData = await courseService.getRoomData(
+        cookie,
+        sessionId,
+        courseId,
+        sections.map((s) => String(s.SECTION_CREATION_ID)),
+      )
+      course = applyRoomData(course, roomData)
+
+      storeAddCourse(course)
       // Default: all sections included
-      setIncludedSectionIds((prev) => ({
-        ...prev,
-        [course.id]: new Set(course.sections.map((s) => s.id)),
-      }))
+      storeSetIncluded({
+        ...storedIncluded,
+        [course.id]: course.sections.map((s) => s.id),
+      })
     } catch (err) {
       setCourseAddError(err instanceof Error ? err.message : "Failed to load course sections")
     } finally {
       setLoadingCourseId(null)
     }
-  }, [selectedIds, loadingCourseId, selectedCourses.length])
+  }, [selectedIds, loadingCourseId, selectedCourses.length, storedIncluded, storeAddCourse, storeSetIncluded])
 
   const removeCourse = useCallback((id: string, clearSchedules: () => void) => {
-    setSelectedCourses((prev) => prev.filter((c) => c.id !== id))
-    setIncludedSectionIds((prev) => { const n = { ...prev }; delete n[id]; return n })
+    storeRemoveCourse(id)
     clearSchedules()
-  }, [])
+  }, [storeRemoveCourse])
 
   const toggleSection = useCallback((courseId: string, sectionId: string, clearSchedules: () => void) => {
-    setIncludedSectionIds((prev) => {
-      const current = new Set(prev[courseId] ?? [])
-      if (current.has(sectionId)) current.delete(sectionId)
-      else current.add(sectionId)
-      return { ...prev, [courseId]: current }
-    })
+    const current = new Set(storedIncluded[courseId] ?? [])
+    if (current.has(sectionId)) current.delete(sectionId)
+    else current.add(sectionId)
+    storeSetIncluded({ ...storedIncluded, [courseId]: [...current] })
     clearSchedules()
-  }, [])
+  }, [storedIncluded, storeSetIncluded])
 
   const toggleAllSections = useCallback((courseId: string, include: boolean, clearSchedules: () => void) => {
     const course = selectedCourses.find((c) => c.id === courseId)
     if (!course) return
-    setIncludedSectionIds((prev) => ({
-      ...prev,
-      [courseId]: include ? new Set(course.sections.map((s) => s.id)) : new Set(),
-    }))
+    storeSetIncluded({
+      ...storedIncluded,
+      [courseId]: include ? course.sections.map((s) => s.id) : [],
+    })
     clearSchedules()
-  }, [selectedCourses])
+  }, [selectedCourses, storedIncluded, storeSetIncluded])
 
   return {
     allCourses,

@@ -155,6 +155,14 @@ export function ScheduleGrid({ schedule, courses }: Props) {
                             {section.professor || "TBA"}
                           </p>
                         )}
+                        {height >= 96 && meeting.room && (
+                          <p
+                            className="text-[10px] leading-tight truncate mt-0.5 font-medium"
+                            style={{ color: `${color}99` }}
+                          >
+                            {meeting.room}
+                          </p>
+                        )}
                       </div>
                     );
                   }),

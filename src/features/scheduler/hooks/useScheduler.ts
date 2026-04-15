@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { Course, Schedule } from "@/types";
+import type { Course } from "@/types";
+import { useStore } from "@/store";
 import { generateSchedules, MAX_PRODUCT, MAX_RESULTS } from "../utils/generator";
 
 type UseScheduler = {
   // state
-  schedules: Schedule[];
+  schedules: ReturnType<typeof useStore.getState>["generated"];
   activeIndex: number;
   generating: boolean;
   generateError: string;
@@ -21,58 +22,61 @@ type UseScheduler = {
 };
 
 export function useScheduler(): UseScheduler {
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const schedules = useStore((s) => s.generated);
+  const activeIndex = useStore((s) => s.activeScheduleIndex);
+  const setGenerated = useStore((s) => s.setGenerated);
+  const setActiveScheduleIndex = useStore((s) => s.setActiveScheduleIndex);
+  const clearGenerated = useStore((s) => s.clearGenerated);
+
+  // These remain local — they are truly transient UI state that should not
+  // survive navigation or be shared across components.
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState("");
   const [truncated, setTruncated] = useState(false);
 
-  const generate = useCallback((
-    selectedCourses: Course[],
-    includedSectionIds: Record<string, Set<string>>,
-  ) => {
-    const coursesForGen = selectedCourses
-      .map((c) => ({
-        ...c,
-        sections: c.sections.filter(
-          (s) => includedSectionIds[c.id]?.has(s.id) ?? false,
-        ),
-      }))
-      .filter((c) => c.sections.length > 0);
+  const generate = useCallback(
+    (
+      selectedCourses: Course[],
+      includedSectionIds: Record<string, Set<string>>,
+    ) => {
+      const coursesForGen = selectedCourses
+        .map((c) => ({
+          ...c,
+          sections: c.sections.filter(
+            (s) => includedSectionIds[c.id]?.has(s.id) ?? false,
+          ),
+        }))
+        .filter((c) => c.sections.length > 0);
 
-    if (coursesForGen.length === 0) return;
+      if (coursesForGen.length === 0) return;
 
-    // Pre-flight: estimate worst-case combinations (product of section counts).
-    // This bounds how long backtracking can run before the MAX_RESULTS cap kicks in.
-    const estimate = coursesForGen.reduce((p, c) => p * c.sections.length, 1);
-    if (estimate > MAX_PRODUCT) {
-      setGenerateError(
-        `Too many possible combinations (~${estimate.toLocaleString()}). Deselect some sections to bring this under ${MAX_PRODUCT.toLocaleString()}.`,
-      );
-      return;
-    }
+      const estimate = coursesForGen.reduce((p, c) => p * c.sections.length, 1);
+      if (estimate > MAX_PRODUCT) {
+        setGenerateError(
+          `Too many possible combinations (~${estimate.toLocaleString()}). Deselect some sections to bring this under ${MAX_PRODUCT.toLocaleString()}.`,
+        );
+        return;
+      }
 
-    setGenerateError("");
-    setTruncated(false);
-    setGenerating(true);
+      setGenerateError("");
+      setTruncated(false);
+      setGenerating(true);
 
-    // setTimeout defers the synchronous computation by one tick so React can
-    // paint the generating spinner before the main thread is occupied.
-    setTimeout(() => {
-      const results = generateSchedules(coursesForGen);
-      setSchedules(results);
-      setTruncated(results.length === MAX_RESULTS);
-      setActiveIndex(0);
-      setGenerating(false);
-    }, 0);
-  }, []);
+      setTimeout(() => {
+        const results = generateSchedules(coursesForGen);
+        setGenerated(results);
+        setTruncated(results.length === MAX_RESULTS);
+        setGenerating(false);
+      }, 0);
+    },
+    [setGenerated],
+  );
 
   const clearSchedules = useCallback(() => {
-    setSchedules([]);
-    setActiveIndex(0);
+    clearGenerated();
     setGenerateError("");
     setTruncated(false);
-  }, []);
+  }, [clearGenerated]);
 
   return {
     schedules,
@@ -82,6 +86,6 @@ export function useScheduler(): UseScheduler {
     truncated,
     generate,
     clearSchedules,
-    setActiveIndex,
+    setActiveIndex: setActiveScheduleIndex,
   };
 }

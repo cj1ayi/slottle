@@ -1,5 +1,6 @@
 import type { ApiCourse, ApiSection } from "@/lib/schema";
 import type { Course, Day, Meeting, Section } from "@/types";
+import type { RoomEntry } from "@/app/api/schedule-data/route";
 
 const DAY_MAP: Record<string, Day> = {
   MON: "M",
@@ -100,4 +101,30 @@ export function buildCourse(
   const sections = apiSections.map((s) => apiSectionToSection(s, partial.code));
   const units = apiSections[0]?.CREDITS ?? 0;
   return { ...partial, units, sections };
+}
+
+/**
+ * Patch meeting room and modality onto a Course using data from GetScheduleData.
+ * Called after buildCourse as a best-effort enrichment — if entries is empty the
+ * original course is returned unchanged.
+ */
+export function applyRoomData(course: Course, entries: RoomEntry[]): Course {
+  if (entries.length === 0) return course;
+  return {
+    ...course,
+    sections: course.sections.map((section) => ({
+      ...section,
+      meetings: section.meetings.map((meeting) => {
+        const entry = entries.find(
+          (e) => e.section === section.section && e.day === meeting.day,
+        );
+        if (!entry) return meeting;
+        return {
+          ...meeting,
+          room: entry.room,
+          modality: entry.room === "Online" ? ("Online" as const) : ("F2F" as const),
+        };
+      }),
+    })),
+  };
 }

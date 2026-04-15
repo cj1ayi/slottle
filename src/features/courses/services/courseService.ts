@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { apiCourseSchema, apiSectionSchema, type ApiCourse, type ApiSection } from "@/lib/schema";
+import type { RoomEntry } from "@/app/api/schedule-data/route";
 
 class CourseService {
   async getCourses(cookie: string, sessionId: string): Promise<ApiCourse[]> {
@@ -29,6 +30,30 @@ class CourseService {
     if (!parsed.success)
       throw new Error("Unexpected section data shape from server");
     return parsed.data;
+  }
+
+  async getRoomData(
+    cookie: string,
+    sessionId: string,
+    courseId: string,
+    sectionIds: string[],
+  ): Promise<RoomEntry[]> {
+    try {
+      const body = sectionIds.map((sectionId) => ({ courseId, sectionId }))
+      const r = await fetch("/api/schedule-data", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-archers-cookie": cookie,
+          "x-academic-session": sessionId,
+        },
+        body: JSON.stringify(body),
+      })
+      if (!r.ok) return []
+      return r.json() as Promise<RoomEntry[]>
+    } catch {
+      return []
+    }
   }
 }
 

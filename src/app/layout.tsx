@@ -16,9 +16,8 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Slottle — Schedule Generator",
-  description:
-    "Precision Course Engineering. Build your perfect conflict-free class schedule.",
+  title: "slottle",
+  description: "build your schedule with ease",
 };
 
 export default function RootLayout({
