@@ -25,7 +25,9 @@ import {
 import type { Course, UserSchedule } from "@/types";
 
 export default function SavedPage() {
-  const [hydrated, setHydrated] = useState(() => useStore.persist.hasHydrated());
+  const [hydrated, setHydrated] = useState(() =>
+    useStore.persist.hasHydrated(),
+  );
   const [search, setSearch] = useState("");
   const saved = useSaved();
 
@@ -34,7 +36,9 @@ export default function SavedPage() {
       setHydrated(true);
       return;
     }
-    const unsubscribe = useStore.persist.onFinishHydration(() => setHydrated(true));
+    const unsubscribe = useStore.persist.onFinishHydration(() =>
+      setHydrated(true),
+    );
     useStore.persist.rehydrate();
     return unsubscribe;
   }, []);
@@ -167,16 +171,47 @@ function SavedCard({
     setEditing(false);
   }
 
-  const handleDownload = useCallback(async () => {
-    if (!exportRef.current || downloading) return;
-    setDownloading(true);
-    let el: HTMLDivElement | null = null;
-    let appliedVarNames: string[] = [];
-    try {
-      const { toPng } = await import("html-to-image");
-      el = exportRef.current;
+  const EXPORT_DAYS = ["M", "T", "W", "Th", "F", "S"] as const;
+  const EXPORT_DAY_LABELS: Record<(typeof EXPORT_DAYS)[number], string> = {
+    M: "Monday",
+    T: "Tuesday",
+    W: "Wednesday",
+    Th: "Thursday",
+    F: "Friday",
+    S: "Saturday",
+  };
 
-      // Resolve CSS vars via computed styles so OKLCH tokens become RGB values.
+  const toMins = (hhmm: number) => Math.floor(hhmm / 100) * 60 + (hhmm % 100);
+  const fmtTime = (hhmm: number) => {
+    const h = Math.floor(hhmm / 100);
+    const m = hhmm % 100;
+    const ap = h >= 12 ? "PM" : "AM";
+    const dh = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    return `${dh}:${String(m).padStart(2, "0")} ${ap}`;
+  };
+
+  function drawRoundRect(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    r: number,
+  ) {
+    const radius = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.arcTo(x + w, y, x + w, y + h, radius);
+    ctx.arcTo(x + w, y + h, x, y + h, radius);
+    ctx.arcTo(x, y + h, x, y, radius);
+    ctx.arcTo(x, y, x + w, y, radius);
+    ctx.closePath();
+  }
+
+  const handleDownload = useCallback(async () => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
       const probe = document.createElement("div");
       probe.style.position = "fixed";
       probe.style.left = "-99999px";
@@ -185,61 +220,196 @@ function SavedCard({
       probe.style.height = "1px";
       document.body.appendChild(probe);
 
-      const resolveVarToColor = (varName: string): string => {
-        probe.style.color = `var(${varName})`;
+      const resolveCssColor = (cssColor: string, fallback: string): string => {
+        probe.style.color = cssColor;
         const resolved = getComputedStyle(probe).color.trim();
-        return resolved || "rgb(0 0 0)";
+        return resolved || fallback;
       };
 
-      // Vars used in inline styles and Tailwind classes (--color-* is Tailwind v4)
-      const varNames = [
-        "--card", "--background", "--foreground", "--muted-foreground",
-        "--muted", "--border", "--primary", "--primary-foreground",
-        "--accent", "--accent-foreground",
-      ];
-      const tailwindAliases: Record<string, string> = {
-        "--color-foreground": "--foreground",
-        "--color-muted-foreground": "--muted-foreground",
-        "--color-border": "--border",
-        "--color-primary": "--primary",
-        "--color-card": "--card",
-        "--color-background": "--background",
-      };
-
-      // Inject resolved rgb vars directly onto the element so the clone inherits them
-      for (const name of varNames) {
-        el.style.setProperty(name, resolveVarToColor(name));
-        appliedVarNames.push(name);
-      }
-      for (const [alias, source] of Object.entries(tailwindAliases)) {
-        el.style.setProperty(alias, el.style.getPropertyValue(source));
-        appliedVarNames.push(alias);
-      }
-
+      const bg = resolveCssColor("var(--card)", "rgb(22 24 42)");
+      const fg = resolveCssColor("var(--foreground)", "rgb(232 235 255)");
+      const muted = resolveCssColor(
+        "var(--muted-foreground)",
+        "rgb(158 163 195)",
+      );
+      const border = resolveCssColor("var(--border)", "rgb(86 91 120)");
       probe.remove();
 
-      // Ensure fonts/layout are ready before rasterizing.
-      await document.fonts.ready;
-      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
-      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+      const canvasWidth = 1600;
+      const padding = 48;
+      const headerH = 84;
+      const legendTopGap = 24;
+      const legendLineH = 20;
+      const timeColW = 94;
+      const gridStart = 730;
+      const gridEnd = 2100;
+      const rowPx = 24;
+      const totalRows = (toMins(gridEnd) - toMins(gridStart)) / 30;
+      const gridH = totalRows * rowPx;
 
-      const bg = el.style.getPropertyValue("--card");
-      const options = { pixelRatio: 2, backgroundColor: bg, cacheBust: true };
+      const activeDays = EXPORT_DAYS.filter((day) =>
+        entry.schedule.sections.some((s) =>
+          s.meetings.some((m) => m.day === day),
+        ),
+      );
+      const displayDays = activeDays.length > 0 ? activeDays : EXPORT_DAYS;
+      const gridW = canvasWidth - padding * 2;
+      const dayColW = (gridW - timeColW) / displayDays.length;
 
-      // Two passes: first warms up font embedding, second captures correctly
-      await toPng(el, options);
-      const dataUrl = await toPng(el, options);
+      const legendItems = entry.schedule.sections.length;
+      const legendRows = Math.max(1, Math.ceil(legendItems / 3));
+      const legendH = 16 + legendRows * legendLineH;
+      const canvasHeight = Math.ceil(
+        padding + headerH + gridH + legendTopGap + legendH + padding,
+      );
+
+      const dpr = Math.max(2, window.devicePixelRatio || 1);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.floor(canvasWidth * dpr);
+      canvas.height = Math.floor(canvasHeight * dpr);
+      canvas.style.width = `${canvasWidth}px`;
+      canvas.style.height = `${canvasHeight}px`;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas 2D context unavailable");
+
+      ctx.scale(dpr, dpr);
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+      // Header
+      ctx.fillStyle = fg;
+      ctx.font = "700 30px var(--font-sans, Inter, system-ui, sans-serif)";
+      ctx.fillText(entry.name, padding, padding + 28);
+      ctx.fillStyle = muted;
+      ctx.font = "500 14px var(--font-sans, Inter, system-ui, sans-serif)";
+      ctx.fillText(`${date}  ${time}`, padding, padding + 54);
+
+      const gridTop = padding + headerH;
+
+      // Day header row
+      ctx.fillStyle = border;
+      ctx.fillRect(padding, gridTop, gridW, 1);
+      ctx.fillRect(padding, gridTop + 34, gridW, 1);
+
+      ctx.fillStyle = muted;
+      ctx.font = "700 10px var(--font-sans, Inter, system-ui, sans-serif)";
+      ctx.textAlign = "center";
+      for (let i = 0; i < displayDays.length; i += 1) {
+        const x = padding + timeColW + i * dayColW;
+        ctx.fillStyle = border;
+        ctx.fillRect(x, gridTop, 1, 34 + gridH);
+        ctx.fillStyle = muted;
+        ctx.fillText(
+          EXPORT_DAY_LABELS[displayDays[i]],
+          x + dayColW / 2,
+          gridTop + 22,
+        );
+      }
+      ctx.textAlign = "left";
+
+      const bodyTop = gridTop + 34;
+      const hourLabels: number[] = [];
+      for (let t = gridStart; t <= gridEnd; t += 100) hourLabels.push(t);
+
+      // Horizontal grid lines + time labels
+      for (let i = 0; i <= totalRows; i += 1) {
+        const y = bodyTop + i * rowPx;
+        ctx.strokeStyle = border;
+        ctx.globalAlpha = i % 2 === 0 ? 0.55 : 0.25;
+        ctx.beginPath();
+        ctx.moveTo(padding + timeColW, y);
+        ctx.lineTo(padding + gridW, y);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.fillStyle = muted;
+      ctx.font = "500 10px ui-monospace, SFMono-Regular, Menlo, monospace";
+      hourLabels.forEach((t) => {
+        const y = bodyTop + ((toMins(t) - toMins(gridStart)) / 30) * rowPx;
+        ctx.fillText(fmtTime(t), padding + 6, y + 4);
+      });
+
+      const colorMap = new Map(entry.courses.map((c) => [c.code, c.color]));
+      const withAlpha = (color: string, alpha: number) => {
+        const p = document.createElement("div");
+        p.style.color = color;
+        const rgb = getComputedStyle(p).color;
+        const m = rgb.match(/\d+/g);
+        if (!m || m.length < 3) return `rgba(107,114,128,${alpha})`;
+        return `rgba(${m[0]},${m[1]},${m[2]},${alpha})`;
+      };
+
+      // Class blocks
+      for (const section of entry.schedule.sections) {
+        for (const meeting of section.meetings) {
+          const dayIdx = displayDays.indexOf(
+            meeting.day as (typeof EXPORT_DAYS)[number],
+          );
+          if (dayIdx < 0) continue;
+
+          const color = colorMap.get(section.code) ?? "#6B7280";
+          const x = padding + timeColW + dayIdx * dayColW + 4;
+          const y =
+            bodyTop +
+            ((toMins(meeting.start) - toMins(gridStart)) / 30) * rowPx +
+            2;
+          const h =
+            ((toMins(meeting.end) - toMins(meeting.start)) / 30) * rowPx - 4;
+          const w = dayColW - 8;
+
+          drawRoundRect(ctx, x, y, w, Math.max(14, h), 6);
+          ctx.fillStyle = withAlpha(color, 0.22);
+          ctx.fill();
+
+          ctx.fillStyle = color;
+          ctx.fillRect(x, y, 4, Math.max(14, h));
+
+          ctx.fillStyle = color;
+          ctx.font = "700 12px var(--font-sans, Inter, system-ui, sans-serif)";
+          ctx.fillText(section.code, x + 8, y + 14);
+
+          ctx.fillStyle = withAlpha(color, 0.85);
+          ctx.font = "600 11px var(--font-sans, Inter, system-ui, sans-serif)";
+          ctx.fillText(section.section, x + 8, y + 29);
+        }
+      }
+
+      // Legend
+      const legendTop = bodyTop + gridH + legendTopGap;
+      const colW = (gridW - 24) / 3;
+      entry.schedule.sections.forEach((s, idx) => {
+        const col = idx % 3;
+        const row = Math.floor(idx / 3);
+        const x = padding + col * colW;
+        const y = legendTop + row * legendLineH;
+        const color = colorMap.get(s.code) ?? "#6B7280";
+
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x + 6, y + 7, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = fg;
+        ctx.font = "700 11px var(--font-sans, Inter, system-ui, sans-serif)";
+        ctx.fillText(s.code, x + 16, y + 11);
+        ctx.fillStyle = muted;
+        ctx.font = "500 11px var(--font-sans, Inter, system-ui, sans-serif)";
+        ctx.fillText(
+          ` - ${s.section} · ${s.professor || "TBA"}`,
+          x + 64,
+          y + 11,
+        );
+      });
 
       const link = document.createElement("a");
       link.download = `${entry.name.replace(/[^a-z0-9]/gi, "_")}.png`;
-      link.href = dataUrl;
+      link.href = canvas.toDataURL("image/png");
       link.click();
     } catch (e) {
       console.error("Export failed", e);
     } finally {
-      if (el) {
-        for (const name of appliedVarNames) el.style.removeProperty(name);
-      }
       setDownloading(false);
     }
   }, [entry.name, downloading]);
@@ -403,13 +573,25 @@ function SavedCard({
           schedule={entry.schedule}
           courses={entry.courses as Course[]}
         />
-        <div style={{ marginTop: 16, display: "flex", flexWrap: "wrap", gap: "6px 20px" }}>
+        <div
+          style={{
+            marginTop: 16,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "6px 20px",
+          }}
+        >
           {entry.schedule.sections.map((s) => {
             const course = entry.courses.find((c) => c.code === s.code);
             return (
               <div
                 key={`export-${s.id}-${s.code}`}
-                style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 11 }}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 6,
+                  fontSize: 11,
+                }}
               >
                 <span
                   style={{
@@ -426,9 +608,17 @@ function SavedCard({
                     {s.code}
                   </span>
                   <span style={{ color: "var(--muted-foreground)" }}>
-                    {" "}— {s.section} · {s.professor || "TBA"}
+                    {" "}
+                    — {s.section} · {s.professor || "TBA"}
                   </span>
-                  <p style={{ color: "var(--muted-foreground)", fontSize: 10, marginTop: 2, fontFamily: "monospace" }}>
+                  <p
+                    style={{
+                      color: "var(--muted-foreground)",
+                      fontSize: 10,
+                      marginTop: 2,
+                      fontFamily: "monospace",
+                    }}
+                  >
                     {meetingSummary(s.meetings)}
                   </p>
                 </div>
@@ -519,7 +709,10 @@ function EmptyState({ hasSearch }: { hasSearch: boolean }) {
     <div className="flex flex-col items-center justify-center py-32 text-center px-8 select-none">
       <p
         className="font-[family-name:var(--font-outfit)] font-black leading-none text-foreground/[0.04]"
-        style={{ fontSize: "clamp(3rem, 10vw, 7rem)", letterSpacing: "-0.04em" }}
+        style={{
+          fontSize: "clamp(3rem, 10vw, 7rem)",
+          letterSpacing: "-0.04em",
+        }}
       >
         {hasSearch ? "NO MATCH" : "EMPTY"}
       </p>
