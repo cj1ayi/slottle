@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Zap, AlertCircle } from "lucide-react";
+import { Zap, AlertCircle, HelpCircle } from "lucide-react";
+import { TutorialModal } from "@/components/layout/TutorialModal";
 
 export function CookieSetup({ onSave }: { onSave: (cookie: string) => void }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
-  const [guideOpen, setGuideOpen] = useState(false);
 
   function handle() {
     const trimmed = value.trim();
@@ -66,60 +66,12 @@ export function CookieSetup({ onSave }: { onSave: (cookie: string) => void }) {
         </button>
 
         {/* How to guide */}
-        <div className="rounded-sm border border-border/50 overflow-hidden">
-          <button
-            onClick={() => setGuideOpen((o) => !o)}
-            className="w-full flex items-center justify-between px-4 py-3 text-left text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <span className="flex items-center gap-2 text-[11px] font-bold tracking-[0.12em] uppercase">
-              <span className="size-4 rounded-full border border-muted-foreground/40 flex items-center justify-center text-[9px] font-black">
-                ?
-              </span>
-              How to get your cookie
-            </span>
-            {guideOpen ? (
-              <ChevronUp className="size-4 shrink-0" />
-            ) : (
-              <ChevronDown className="size-4 shrink-0" />
-            )}
+        <TutorialModal>
+          <button className="w-full flex items-center gap-2 px-4 py-3 rounded-sm border border-border/50 text-[11px] font-bold tracking-[0.12em] uppercase text-muted-foreground hover:text-foreground hover:border-border transition-colors">
+            <HelpCircle className="size-4 shrink-0" />
+            How to get your cookie
           </button>
-
-          {guideOpen && (
-            <div className="px-4 pb-4 border-t border-border/40">
-              <ol className="mt-3 space-y-2 text-sm text-muted-foreground list-decimal list-inside">
-                <li>Log in to Archers Hub in another tab.</li>
-                <li>
-                  Open DevTools{" "}
-                  <kbd className="px-1 py-0.5 text-xs font-mono bg-accent rounded-sm">
-                    F12
-                  </kbd>{" "}
-                  → <strong className="text-foreground">Network</strong> tab.
-                </li>
-                <li>
-                  Reload the page and click any request to{" "}
-                  <code className="text-xs font-mono text-primary">
-                    archershub.dlsu.edu.ph
-                  </code>
-                  .
-                </li>
-                <li>
-                  Under{" "}
-                  <strong className="text-foreground">Request Headers</strong>,
-                  copy the full{" "}
-                  <code className="text-xs font-mono text-primary">
-                    cookie:
-                  </code>{" "}
-                  value.
-                </li>
-                <li>Paste it into the field above and click Connect Engine.</li>
-              </ol>
-              <p className="mt-3 text-xs text-muted-foreground/60">
-                Your cookie stays in your browser — it is never sent to our
-                servers.
-              </p>
-            </div>
-          )}
-        </div>
+        </TutorialModal>
       </div>
     </div>
   );

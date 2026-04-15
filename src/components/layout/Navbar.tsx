@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Moon, Settings, Sun, User } from "lucide-react";
+import { HelpCircle, Moon, Settings, Sun, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { TutorialModal } from "./TutorialModal";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -47,6 +48,11 @@ export function Navbar() {
 
       {/* Right side */}
       <div className="ml-auto flex items-center gap-1">
+        <TutorialModal>
+          <IconBtn label="How to get your cookie">
+            <HelpCircle className="size-4" />
+          </IconBtn>
+        </TutorialModal>
         <IconBtn label={dark ? "Switch to light mode" : "Switch to dark mode"} onClick={toggleTheme}>
           {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </IconBtn>

@@ -1,9 +1,10 @@
 "use client";
 
-import { Moon, Sun } from "lucide-react";
+import { HelpCircle, Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { TutorialModal } from "./TutorialModal";
 
 /* ── Logo ─────────────────────────────────────────────────────────── */
 export function NavLogo() {
@@ -137,6 +138,15 @@ export function ThemeToggle() {
 export function NavRightIcons() {
   return (
     <div className="flex items-center gap-0.5">
+      <TutorialModal>
+        <button
+          aria-label="How to get your cookie"
+          className="flex items-center gap-1.5 h-8 px-2 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-xs font-medium"
+        >
+          <HelpCircle className="size-4 shrink-0" />
+          Tutorial
+        </button>
+      </TutorialModal>
       <ThemeToggle />
     </div>
   );

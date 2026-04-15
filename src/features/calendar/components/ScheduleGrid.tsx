@@ -104,15 +104,8 @@ export function ScheduleGrid({ schedule, courses }: Props) {
               {Array.from({ length: totalRows }, (_, i) => (
                 <div
                   key={i}
-                  className="absolute inset-x-0 border-t"
-                  style={{
-                    top: i * ROW_PX,
-                    height: ROW_PX,
-                    borderColor:
-                      i % 2 === 0
-                        ? "color-mix(in oklch, var(--border) 70%, transparent)"
-                        : "color-mix(in oklch, var(--border) 30%, transparent)",
-                  }}
+                  className={`absolute inset-x-0 border-t ${i % 2 === 0 ? "border-border/70" : "border-border/30"}`}
+                  style={{ top: i * ROW_PX, height: ROW_PX }}
                 />
               ))}
 
